@@ -1,0 +1,83 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+.vite/
+*.tsbuildinfo
+
+# Cloudflare Workers
+.wrangler/
+.dev.vars
+.mf/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Testing & coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# IDE & editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# TypeScript / tooling cache
+.eslintcache
+.stylelintcache
+.cache/
+.parcel-cache/
+.turbo/
+
+# Supabase local
+.supabase/
+
+# Misc
+*.pem
+*.key
+*.cert
+.vercel
+.netlify
+
+# Debug
+*.pid
+*.seed
+*.pid.lock
+
+# Optional package manager locks (keep one; uncomment if you standardize on one)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
