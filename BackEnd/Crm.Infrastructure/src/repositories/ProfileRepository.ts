@@ -1,20 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { IProfileRepository } from '../../../Crm.Application/src/interfaces/repositories/IProfileRepository';
 import type { Profile } from '../../../Crm.Domain/entities/Profile';
 import { toProfile, type ProfileRow } from '../mappers/profileMapper';
-
 /**
  * Data access for public.profiles (Supabase Postgres).
  *
  * Project flow: Api receives JWT → createSupabaseUserClient → ProfileRepository
  * → Supabase query (RLS filters rows) → profileMapper.toProfile → domain Profile
- * for Application rules and JSON responses. Does not contain HTTP or business rules.
+ * for Application use-cases (IProfileRepository). Does not contain HTTP or business rules.
  *
  * select('*') notes: extra DB columns are not exposed to the API because toProfile
  * only maps id, full_name, role, created_at. Join ambiguity does not apply here
  * (single-table query). Without Supabase codegen, explicit column strings do not
  * add full compile-time safety either.
  */
-export class ProfileRepository {
+export class ProfileRepository implements IProfileRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
   /** Returns the profile or null if not found / not visible under RLS. */
