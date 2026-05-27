@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
-import { AssignConversationError } from '../../../Crm.Application/src/errors';
-import { ApiError, mapAssignConversationError } from '../errors';
+import { AssignConversationError, UpdateConversationStatusError } from '../../../Crm.Application/src/errors';
+import { ApiError, mapAssignConversationError, mapUpdateConversationStatusError } from '../errors';
 import type {
   AssignConversationInput,
   CreateConversationInput,
   SendMessageInput,
+  UpdateConversationStatusInput,
 } from '../../../Crm.Application/src/services';
 import {
   AssignConversationService,
@@ -14,6 +15,7 @@ import {
   ListConversationMessagesService,
   ListConversationThreadsService,
   SendMessageService,
+  UpdateConversationStatusService,
 } from '../../../Crm.Application/src/services';
 import { AppRole } from '../../../Crm.Domain/enums/AppRole';
 import { MessageSenderType } from '../../../Crm.Domain/enums/MessageSenderType';
@@ -342,6 +344,81 @@ conversations.patch('/:threadId/assign', async (c) => {
   } catch (err) {
     if (err instanceof AssignConversationError) {
       throw mapAssignConversationError(err);
+    }
+    throw err;
+  }
+});
+
+/**
+ * PATCH /api/conversations/:threadId/status
+ */
+conversations.patch('/:threadId/status', async (c) => {
+  const supabase = c.get('supabase');
+  const userId = c.get('userId');
+  const threadId = c.req.param('threadId');
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    throw new ApiError({
+      code: 'INVALID_JSON',
+      status: HttpStatus.BadRequest,
+      message: 'Invalid JSON body',
+    });
+  }
+
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    typeof (body as { status?: unknown }).status !== 'string'
+  ) {
+    throw new ApiError({
+      code: 'VALIDATION_FAILED',
+      status: HttpStatus.BadRequest,
+      message: 'status is required',
+    });
+  }
+
+  const input: UpdateConversationStatusInput = {
+    status: (body as { status: string }).status.trim() as UpdateConversationStatusInput['status'],
+  };
+
+  if (!input.status) {
+    throw new ApiError({
+      code: 'VALIDATION_FAILED',
+      status: HttpStatus.BadRequest,
+      message: 'status is required',
+    });
+  }
+
+  const profile = await new GetMeService(new ProfileRepository(supabase)).execute(userId);
+  if (!profile) {
+    throw new ApiError({
+      code: 'NOT_FOUND_PROFILE',
+      status: HttpStatus.NotFound,
+      message: 'Profile not found',
+    });
+  }
+
+  try {
+    const thread = await new UpdateConversationStatusService(
+      new ConversationThreadRepository(supabase),
+    ).execute(threadId, input, profile);
+
+    return c.json({
+      id: thread.id,
+      clientId: thread.clientId,
+      assignedTo: thread.assignedTo,
+      subject: thread.subject,
+      status: thread.status,
+      lastMessageAt: thread.lastMessageAt.toISOString(),
+      createdAt: thread.createdAt.toISOString(),
+      updatedAt: thread.updatedAt.toISOString(),
+    });
+  } catch (err) {
+    if (err instanceof UpdateConversationStatusError) {
+      throw mapUpdateConversationStatusError(err);
     }
     throw err;
   }

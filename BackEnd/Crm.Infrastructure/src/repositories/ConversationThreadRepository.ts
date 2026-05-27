@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CreateConversationThreadInput, IConversationThreadRepository } from '../../../Crm.Application/src/interfaces/repositories/IConversationThreadRepository';
 import type { ConversationThread } from '../../../Crm.Domain/entities/ConversationThread';
+import type { ConversationStatus } from '../../../Crm.Domain/enums/ConversationStatus';
 import {
   toConversationThread,
   type ConversationThreadRow,
@@ -80,6 +81,28 @@ export class ConversationThreadRepository implements IConversationThreadReposito
     const thread = await this.getById(threadId);
     if (!thread) {
       throw new Error(`Failed to load conversation thread ${threadId} after assign`);
+    }
+
+    return thread;
+  }
+
+  /**
+   * Updates status on a thread. RLS controls who may update.
+   * Update without RETURNING: same RLS read-back issue as assignTo.
+   */
+  async updateStatus(threadId: string, status: ConversationStatus): Promise<ConversationThread> {
+    const { error } = await this.supabase
+      .from('conversation_threads')
+      .update({ status })
+      .eq('id', threadId);
+
+    if (error) {
+      throw new Error(`Failed to update conversation thread status ${threadId}: ${error.message}`);
+    }
+
+    const thread = await this.getById(threadId);
+    if (!thread) {
+      throw new Error(`Failed to load conversation thread ${threadId} after status update`);
     }
 
     return thread;

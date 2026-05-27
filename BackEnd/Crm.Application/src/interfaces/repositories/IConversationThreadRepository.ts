@@ -1,4 +1,5 @@
 import type { ConversationThread } from '../../../../Crm.Domain/entities/ConversationThread';
+import type { ConversationStatus } from '../../../../Crm.Domain/enums/ConversationStatus';
 
 /** Body fields for the thread row in POST /api/conversations. */
 export interface CreateConversationThreadInput {
@@ -16,4 +17,6 @@ export interface IConversationThreadRepository {
   create(input: CreateConversationThreadInput): Promise<ConversationThread>;
   /** Sets assigned_to on a thread. RLS enforces manager vs sales claim rules. */
   assignTo(threadId: string, assignedTo: string): Promise<ConversationThread>;
+  /** Updates status on a thread. RLS enforces manager vs sales-on-owned-thread rules. */
+  updateStatus(threadId: string, status: ConversationStatus): Promise<ConversationThread>;
 }
