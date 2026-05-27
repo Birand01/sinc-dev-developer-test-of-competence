@@ -7,15 +7,6 @@
 - Goal: maintain clear layer boundaries, correct role permissions, and a production-style MVP aligned with the case study.
 
 ---
-
-## Emoji & Visual Richness Rules (Assistant Output)
-
-- Every assistant response should use emojis where helpful.
-- Headers, list items, and step-by-step flows should use icons for scannability.
-- These rules apply to **assistant explanations only**, not to project source code or commit messages.
-
----
-
 ## Code Generation Guardrail
 
 - The assistant **must not generate implementation code** until the user explicitly says one of:

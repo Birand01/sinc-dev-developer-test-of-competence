@@ -14,6 +14,11 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "../Crm.Application/src/**/*.ts",
+    "../Crm.Infrastructure/src/**/*.ts",
+    "../Crm.Domain/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }
