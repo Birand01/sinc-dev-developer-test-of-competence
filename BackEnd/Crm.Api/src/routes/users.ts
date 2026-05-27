@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { GetMeService } from '../../../Crm.Application/src/services/GetMeService';
 import { ProfileRepository } from '../../../Crm.Infrastructure/src/repositories/ProfileRepository';
+import { ApiError } from '../errors/ApiError';
+import { HttpStatus } from '../http/HttpStatus';
 import type { Env } from '../types/env';
 
 /**
@@ -25,7 +27,11 @@ users.get('/me', async (c) => {
   const profile = await getMeService.execute(userId);
 
   if (!profile) {
-    return c.json({ error: 'Profile not found' }, 404);
+    throw new ApiError({
+      code: 'NOT_FOUND_PROFILE',
+      status: HttpStatus.NotFound,
+      message: 'Profile not found',
+    });
   }
 
   // Map domain Profile → JSON (Date → ISO string for HTTP)
