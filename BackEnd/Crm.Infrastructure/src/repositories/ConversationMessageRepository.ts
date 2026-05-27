@@ -48,6 +48,27 @@ export class ConversationMessageRepository implements IConversationMessageReposi
   }
 
   /**
+   * Lists messages for a thread visible under RLS, chronological (created_at asc).
+   */
+  async listByThreadId(threadId: string): Promise<ConversationMessage[]> {
+    const { data, error } = await this.supabase
+      .from('conversation_messages')
+      .select('*')
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw new Error(`Failed to list conversation messages for thread ${threadId}: ${error.message}`);
+    }
+
+    if (!data?.length) {
+      return [];
+    }
+
+    return data.map((row) => toConversationMessage(row as ConversationMessageRow));
+  }
+
+  /**
    * Returns the message or null if not found / not visible under RLS.
    * maybeSingle: 0 rows → null; 1 row → data; 2+ rows → error.
    */

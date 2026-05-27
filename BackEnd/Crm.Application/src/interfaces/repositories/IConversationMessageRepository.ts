@@ -15,4 +15,6 @@ export interface CreateConversationMessageInput {
  */
 export interface IConversationMessageRepository {
   create(input: CreateConversationMessageInput): Promise<ConversationMessage>;
+  /** Messages on one thread, oldest first (chat order). RLS filters by thread access. */
+  listByThreadId(threadId: string): Promise<ConversationMessage[]>;
 }
