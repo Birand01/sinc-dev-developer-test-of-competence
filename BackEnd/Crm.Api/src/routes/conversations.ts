@@ -1,6 +1,13 @@
 import { Hono } from 'hono';
-import type { CreateConversationInput, SendMessageInput } from '../../../Crm.Application/src/services';
+import { AssignConversationError } from '../../../Crm.Application/src/errors';
+import { ApiError, mapAssignConversationError } from '../errors';
+import type {
+  AssignConversationInput,
+  CreateConversationInput,
+  SendMessageInput,
+} from '../../../Crm.Application/src/services';
 import {
+  AssignConversationService,
   CreateConversationService,
   GetConversationThreadByIdService,
   GetMeService,
@@ -13,7 +20,6 @@ import { MessageSenderType } from '../../../Crm.Domain/enums/MessageSenderType';
 import { ConversationMessageRepository } from '../../../Crm.Infrastructure/src/repositories/ConversationMessageRepository';
 import { ConversationThreadRepository } from '../../../Crm.Infrastructure/src/repositories/ConversationThreadRepository';
 import { ProfileRepository } from '../../../Crm.Infrastructure/src/repositories/ProfileRepository';
-import { ApiError } from '../errors/ApiError';
 import { HttpStatus } from '../http/HttpStatus';
 import type { Env } from '../types/env';
 
@@ -263,6 +269,82 @@ conversations.get('/:threadId/messages', async (c) => {
       createdAt: message.createdAt.toISOString(),
     })),
   );
+});
+
+/**
+ * PATCH /api/conversations/:threadId/assign
+ */
+conversations.patch('/:threadId/assign', async (c) => {
+  const supabase = c.get('supabase');
+  const userId = c.get('userId');
+  const threadId = c.req.param('threadId');
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    throw new ApiError({
+      code: 'INVALID_JSON',
+      status: HttpStatus.BadRequest,
+      message: 'Invalid JSON body',
+    });
+  }
+
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    typeof (body as { assignedTo?: unknown }).assignedTo !== 'string'
+  ) {
+    throw new ApiError({
+      code: 'VALIDATION_FAILED',
+      status: HttpStatus.BadRequest,
+      message: 'assignedTo is required',
+    });
+  }
+
+  const input: AssignConversationInput = {
+    assignedTo: (body as { assignedTo: string }).assignedTo.trim(),
+  };
+
+  if (!input.assignedTo) {
+    throw new ApiError({
+      code: 'VALIDATION_FAILED',
+      status: HttpStatus.BadRequest,
+      message: 'assignedTo is required',
+    });
+  }
+
+  const profile = await new GetMeService(new ProfileRepository(supabase)).execute(userId);
+  if (!profile) {
+    throw new ApiError({
+      code: 'NOT_FOUND_PROFILE',
+      status: HttpStatus.NotFound,
+      message: 'Profile not found',
+    });
+  }
+
+  try {
+    const thread = await new AssignConversationService(
+      new ConversationThreadRepository(supabase),
+      new ProfileRepository(supabase),
+    ).execute(threadId, input, profile);
+
+    return c.json({
+      id: thread.id,
+      clientId: thread.clientId,
+      assignedTo: thread.assignedTo,
+      subject: thread.subject,
+      status: thread.status,
+      lastMessageAt: thread.lastMessageAt.toISOString(),
+      createdAt: thread.createdAt.toISOString(),
+      updatedAt: thread.updatedAt.toISOString(),
+    });
+  } catch (err) {
+    if (err instanceof AssignConversationError) {
+      throw mapAssignConversationError(err);
+    }
+    throw err;
+  }
 });
 
 /**

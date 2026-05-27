@@ -64,6 +64,28 @@ export class ConversationThreadRepository implements IConversationThreadReposito
   }
 
   /**
+   * Updates assigned_to on a thread. RLS controls who may update (manager vs sales claim).
+   * Update without RETURNING: same RLS read-back issue as create.
+   */
+  async assignTo(threadId: string, assignedTo: string): Promise<ConversationThread> {
+    const { error } = await this.supabase
+      .from('conversation_threads')
+      .update({ assigned_to: assignedTo })
+      .eq('id', threadId);
+
+    if (error) {
+      throw new Error(`Failed to assign conversation thread ${threadId}: ${error.message}`);
+    }
+
+    const thread = await this.getById(threadId);
+    if (!thread) {
+      throw new Error(`Failed to load conversation thread ${threadId} after assign`);
+    }
+
+    return thread;
+  }
+
+  /**
    * Returns the thread or null if not found / not visible under RLS.
    * maybeSingle: 0 rows → null; 1 row → data; 2+ rows → error.
    */
