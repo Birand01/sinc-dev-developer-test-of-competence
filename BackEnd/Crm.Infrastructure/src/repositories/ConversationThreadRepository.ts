@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { CreateConversationThreadInput, IConversationThreadRepository } from '../../../Crm.Application/src/interfaces/repositories/IConversationThreadRepository';
 import type { ConversationThread } from '../../../Crm.Domain/entities/ConversationThread';
 import {
   toConversationThread,
@@ -13,8 +14,54 @@ import {
  *
  * select('*'): mapper maps only known fields; single-table query.
  */
-export class ConversationThreadRepository {
+export class ConversationThreadRepository implements IConversationThreadRepository {
   constructor(private readonly supabase: SupabaseClient) {}
+
+  /**
+   * Lists conversation threads visible under RLS, newest activity first.
+   */
+  async list(): Promise<ConversationThread[]> {
+    const { data, error } = await this.supabase
+      .from('conversation_threads')
+      .select('*')
+      .order('last_message_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to list conversation threads: ${error.message}`);
+    }
+
+    if (!data?.length) {
+      return [];
+    }
+
+    return data.map((row) => toConversationThread(row as ConversationThreadRow));
+  }
+
+  /**
+   * Inserts a new thread (unassigned, status open). RLS controls who may insert.
+   * Insert without RETURNING: PostgREST insert+select can fail SELECT policy even when insert succeeds.
+   */
+  async create(input: CreateConversationThreadInput): Promise<ConversationThread> {
+    const id = crypto.randomUUID();
+
+    const { error } = await this.supabase.from('conversation_threads').insert({
+      id,
+      client_id: input.clientId,
+      subject: input.subject,
+      assigned_to: null,
+    });
+
+    if (error) {
+      throw new Error(`Failed to create conversation thread: ${error.message}`);
+    }
+
+    const thread = await this.getById(id);
+    if (!thread) {
+      throw new Error(`Failed to load conversation thread ${id} after insert`);
+    }
+
+    return thread;
+  }
 
   /**
    * Returns the thread or null if not found / not visible under RLS.

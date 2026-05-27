@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { GetMeService } from '../../../Crm.Application/src/services/GetMeService';
+import { GetMeService } from '../../../Crm.Application/src/services';
 import { ProfileRepository } from '../../../Crm.Infrastructure/src/repositories/ProfileRepository';
 import { ApiError } from '../errors/ApiError';
 import { HttpStatus } from '../http/HttpStatus';

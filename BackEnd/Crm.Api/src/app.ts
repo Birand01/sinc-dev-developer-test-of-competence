@@ -9,6 +9,7 @@ import { ApiError } from './errors/ApiError';
 import { HttpStatus } from './http/HttpStatus';
 import { auth } from './middleware/auth';
 import { clients } from './routes/clients';
+import { conversations } from './routes/conversations';
 import { users } from './routes/users';
 import type { Env } from './types/env';
 
@@ -27,6 +28,9 @@ app.onError((err, c) => {
     );
   }
 
+  // Dev debugging: surface unexpected runtime errors in wrangler logs.
+  console.error('Unhandled API error:', err);
+
   // Unknown/unhandled error: don't leak internals.
   return c.json(
     { code: 'INTERNAL_SERVER_ERROR', error: 'Internal Server Error' },
@@ -42,6 +46,7 @@ const api = new Hono<Env>();
 api.use('*', auth);
 api.route('/', users); // GET /me → full path /api/me
 api.route('/clients', clients); // GET /:clientId → /api/clients/:clientId
+api.route('/conversations', conversations); // GET /:threadId → /api/conversations/:threadId
 
 app.route('/api', api);
 

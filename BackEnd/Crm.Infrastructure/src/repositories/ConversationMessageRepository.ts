@@ -1,4 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type {
+  CreateConversationMessageInput,
+  IConversationMessageRepository,
+} from '../../../Crm.Application/src/interfaces/repositories/IConversationMessageRepository';
 import type { ConversationMessage } from '../../../Crm.Domain/entities/ConversationMessage';
 import {
   toConversationMessage,
@@ -13,8 +17,35 @@ import {
  *
  * select('*'): mapper maps only known fields; single-table query.
  */
-export class ConversationMessageRepository {
+export class ConversationMessageRepository implements IConversationMessageRepository {
   constructor(private readonly supabase: SupabaseClient) {}
+
+  /**
+   * Inserts a new message on a thread. RLS requires access to the parent thread.
+   * Insert without RETURNING: same RLS read-back issue as conversation_threads.create.
+   */
+  async create(input: CreateConversationMessageInput): Promise<ConversationMessage> {
+    const id = crypto.randomUUID();
+
+    const { error } = await this.supabase.from('conversation_messages').insert({
+      id,
+      thread_id: input.threadId,
+      sender_id: input.senderId,
+      sender_type: input.senderType,
+      body: input.body,
+    });
+
+    if (error) {
+      throw new Error(`Failed to create conversation message: ${error.message}`);
+    }
+
+    const message = await this.getById(id);
+    if (!message) {
+      throw new Error(`Failed to load conversation message ${id} after insert`);
+    }
+
+    return message;
+  }
 
   /**
    * Returns the message or null if not found / not visible under RLS.

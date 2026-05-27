@@ -1,8 +1,8 @@
-import type { Client } from '../../../Crm.Domain/entities/Client';
+import type { Client } from '../../../../Crm.Domain/entities/Client';
 import type {
   CreateClientInput,
   IClientRepository,
-} from '../interfaces/repositories/IClientRepository';
+} from '../../interfaces/repositories/IClientRepository';
 
 /**
  * Use-case: create a new CRM client (lead) record.

@@ -1,5 +1,5 @@
-import type { Client } from '../../../Crm.Domain/entities/Client';
-import type { IClientRepository } from '../interfaces/repositories/IClientRepository';
+import type { Client } from '../../../../Crm.Domain/entities/Client';
+import type { IClientRepository } from '../../interfaces/repositories/IClientRepository';
 
 /**
  * Use-case: load a single client by id.

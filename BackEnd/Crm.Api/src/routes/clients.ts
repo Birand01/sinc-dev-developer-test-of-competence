@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import type { CreateClientInput } from '../../../Crm.Application/src/interfaces/repositories/IClientRepository';
-import { CreateClientService } from '../../../Crm.Application/src/services/CreateClientService';
-import { GetClientByIdService } from '../../../Crm.Application/src/services/GetClientByIdService';
-import { ListClientsService } from '../../../Crm.Application/src/services/ListClientsService';
+import {
+  CreateClientService,
+  GetClientByIdService,
+  ListClientsService,
+} from '../../../Crm.Application/src/services';
 import { ClientRepository } from '../../../Crm.Infrastructure/src/repositories/ClientRepository';
 import { ApiError } from '../errors/ApiError';
 import { HttpStatus } from '../http/HttpStatus';

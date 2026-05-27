@@ -1,8 +1,8 @@
-import type { Client } from '../../../Crm.Domain/entities/Client';
+import type { Client } from '../../../../Crm.Domain/entities/Client';
 import type {
   ClientListFilters,
   IClientRepository,
-} from '../interfaces/repositories/IClientRepository';
+} from '../../interfaces/repositories/IClientRepository';
 
 /**
  * Use-case: list CRM clients with optional search and owner filter.

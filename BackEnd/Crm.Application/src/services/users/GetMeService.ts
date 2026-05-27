@@ -1,5 +1,5 @@
-import type { Profile } from '../../../Crm.Domain/entities/Profile';
-import type { IProfileRepository } from '../interfaces/repositories/IProfileRepository';
+import type { Profile } from '../../../../Crm.Domain/entities/Profile';
+import type { IProfileRepository } from '../../interfaces/repositories/IProfileRepository';
 
 /**
  * Use-case: return the authenticated user's profile.

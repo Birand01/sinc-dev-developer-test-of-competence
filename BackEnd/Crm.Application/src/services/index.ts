@@ -1,4 +1,3 @@
-export { CreateClientService } from './CreateClientService';
-export { GetClientByIdService } from './GetClientByIdService';
-export { GetMeService } from './GetMeService';
-export { ListClientsService } from './ListClientsService';
+export * from './clients';
+export * from './conversations';
+export * from './users';
