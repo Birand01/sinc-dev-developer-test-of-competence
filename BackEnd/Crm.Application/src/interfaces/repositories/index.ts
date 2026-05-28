@@ -17,6 +17,10 @@ export type {
   IDealRepository,
 } from './IDealRepository';
 export type {
+  CreateDealNoteInput,
+  IDealNoteRepository,
+} from './IDealNoteRepository';
+export type {
   CreateDealStageHistoryInput,
   IDealStageHistoryRepository,
 } from './IDealStageHistoryRepository';

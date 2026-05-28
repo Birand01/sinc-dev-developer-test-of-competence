@@ -1,4 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type {
+  CreateDealNoteInput,
+  IDealNoteRepository,
+} from '../../../Crm.Application/src/interfaces/repositories/IDealNoteRepository';
 import type { DealNote } from '../../../Crm.Domain/entities/DealNote';
 import { mapMaybeSingle, throwIfSupabaseError } from '../helpers/repositoryHelpers';
 import { toDealNote, type DealNoteRow } from '../mappers/dealNoteMapper';
@@ -11,8 +15,32 @@ import { toDealNote, type DealNoteRow } from '../mappers/dealNoteMapper';
  *
  * select('*'): mapper maps only known fields; single-table query.
  */
-export class DealNoteRepository {
+export class DealNoteRepository implements IDealNoteRepository {
   constructor(private readonly supabase: SupabaseClient) {}
+
+  /**
+   * Inserts a new deal_notes row.
+   * Insert without RETURNING to avoid RLS read-back failures on insert().select().
+   */
+  async create(input: CreateDealNoteInput): Promise<DealNote> {
+    const id = crypto.randomUUID();
+
+    const { error } = await this.supabase.from('deal_notes').insert({
+      id,
+      deal_id: input.dealId,
+      author_id: input.authorId,
+      body: input.body,
+    });
+
+    throwIfSupabaseError(error, `Failed to create deal note for deal ${input.dealId}`);
+
+    const note = await this.getById(id);
+    if (!note) {
+      throw new Error(`Failed to load deal note ${id} after insert`);
+    }
+
+    return note;
+  }
 
   /**
    * Returns the note or null if not found / not visible under RLS.

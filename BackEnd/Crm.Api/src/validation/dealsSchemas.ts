@@ -53,7 +53,13 @@ export const updateDealOwnerBodySchema = z.object({
   ownerId: nullableTrimmedUuid,
 });
 
+/** Body schema for POST /api/deals/:dealId/notes. */
+export const createDealNoteBodySchema = z.object({
+  body: requiredTrimmedString,
+});
+
 export type CreateDealBody = z.infer<typeof createDealBodySchema>;
 export type ListDealsQuery = z.infer<typeof listDealsQuerySchema>;
 export type UpdateDealStageBody = z.infer<typeof updateDealStageBodySchema>;
 export type UpdateDealOwnerBody = z.infer<typeof updateDealOwnerBodySchema>;
+export type CreateDealNoteBody = z.infer<typeof createDealNoteBodySchema>;

@@ -1,13 +1,16 @@
 import { Hono } from 'hono';
 import {
+  CreateDealNoteError,
   CreateDealError,
   UpdateDealOwnerError,
   UpdateDealStageError,
 } from '../../../Crm.Application/src/errors';
+import type { CreateDealNoteInput } from '../../../Crm.Application/src/services/deals/CreateDealNoteService';
 import type { CreateDealInput } from '../../../Crm.Application/src/services/deals/CreateDealService';
 import type { UpdateDealOwnerInput } from '../../../Crm.Application/src/services/deals/UpdateDealOwnerService';
 import type { UpdateDealStageInput } from '../../../Crm.Application/src/services/deals/UpdateDealStageService';
 import {
+  CreateDealNoteService,
   CreateDealService,
   GetDealByIdService,
   GetMeService,
@@ -19,17 +22,20 @@ import type { DealListFilters } from '../../../Crm.Application/src/interfaces/re
 import {
   ApiError,
   mapCreateDealError,
+  mapCreateDealNoteError,
   mapUpdateDealOwnerError,
   mapUpdateDealStageError,
 } from '../errors';
 import { HttpStatus } from '../http/HttpStatus';
 import { ClientRepository } from '../../../Crm.Infrastructure/src/repositories/ClientRepository';
+import { DealNoteRepository } from '../../../Crm.Infrastructure/src/repositories/DealNoteRepository';
 import { DealStageHistoryRepository } from '../../../Crm.Infrastructure/src/repositories/DealStageHistoryRepository';
 import { DealRepository } from '../../../Crm.Infrastructure/src/repositories/DealRepository';
 import { ProfileRepository } from '../../../Crm.Infrastructure/src/repositories/ProfileRepository';
-import { toDealResponse } from '../mappers/dealResponseMapper';
+import { toDealNoteResponse, toDealResponse } from '../mappers/dealResponseMapper';
 import type { Env } from '../types/env';
 import {
+  createDealNoteBodySchema,
   createDealBodySchema,
   listDealsQuerySchema,
   updateDealOwnerBodySchema,
@@ -42,6 +48,7 @@ const deals = new Hono<Env>();
 // Request-scoped dependency factory for deals routes (keeps endpoint wiring concise).
 function createDealDeps(supabase: Env['Variables']['supabase']) {
   const dealRepository = new DealRepository(supabase);
+  const dealNoteRepository = new DealNoteRepository(supabase);
   const dealStageHistoryRepository = new DealStageHistoryRepository(supabase);
   const profileRepository = new ProfileRepository(supabase);
   const clientRepository = new ClientRepository(supabase);
@@ -54,6 +61,10 @@ function createDealDeps(supabase: Env['Variables']['supabase']) {
     updateDealStageService: new UpdateDealStageService(
       dealRepository,
       dealStageHistoryRepository,
+    ),
+    createDealNoteService: new CreateDealNoteService(
+      dealRepository,
+      dealNoteRepository,
     ),
     createDealService: new CreateDealService(
       dealRepository,
@@ -236,6 +247,51 @@ deals.patch('/:dealId/owner', async (c) => {
   } catch (err) {
     if (err instanceof UpdateDealOwnerError) {
       throw mapUpdateDealOwnerError(err);
+    }
+    throw err;
+  }
+});
+
+/**
+ * POST /api/deals/:dealId/notes
+ */
+deals.post('/:dealId/notes', async (c) => {
+  const supabase = c.get('supabase');
+  const deps = createDealDeps(supabase);
+  const userId = c.get('userId');
+  const dealId = c.req.param('dealId');
+
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    throw new ApiError({
+      code: 'INVALID_JSON',
+      status: HttpStatus.BadRequest,
+      message: 'Invalid JSON body',
+    });
+  }
+
+  const input = parseBodyOrThrow(
+    createDealNoteBodySchema,
+    rawBody,
+  ) as CreateDealNoteInput;
+
+  const profile = await deps.getMeService.execute(userId);
+  if (!profile) {
+    throw new ApiError({
+      code: 'NOT_FOUND_PROFILE',
+      status: HttpStatus.NotFound,
+      message: 'Profile not found',
+    });
+  }
+
+  try {
+    const note = await deps.createDealNoteService.execute(dealId, input, profile);
+    return c.json(toDealNoteResponse(note), HttpStatus.Created);
+  } catch (err) {
+    if (err instanceof CreateDealNoteError) {
+      throw mapCreateDealNoteError(err);
     }
     throw err;
   }

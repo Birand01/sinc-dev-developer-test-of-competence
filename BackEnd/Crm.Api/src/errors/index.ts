@@ -3,6 +3,7 @@ export { ApiError } from './ApiError';
 export type { ErrorCode } from './ErrorCode';
 export { mapAssignConversationError } from './mapAssignConversationError';
 export { mapCreateDealError } from './mapCreateDealError';
+export { mapCreateDealNoteError } from './mapCreateDealNoteError';
 export { mapUpdateDealOwnerError } from './mapUpdateDealOwnerError';
 export { mapUpdateDealStageError } from './mapUpdateDealStageError';
 export { mapUpdateConversationStatusError } from './mapUpdateConversationStatusError';
