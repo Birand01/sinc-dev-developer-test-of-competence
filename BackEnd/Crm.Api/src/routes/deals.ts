@@ -12,7 +12,7 @@ import type { UpdateDealStageInput } from '../../../Crm.Application/src/services
 import {
   CreateDealNoteService,
   CreateDealService,
-  GetDealByIdService,
+  GetDealDetailService,
   GetMeService,
   ListDealsService,
   UpdateDealOwnerService,
@@ -32,7 +32,11 @@ import { DealNoteRepository } from '../../../Crm.Infrastructure/src/repositories
 import { DealStageHistoryRepository } from '../../../Crm.Infrastructure/src/repositories/DealStageHistoryRepository';
 import { DealRepository } from '../../../Crm.Infrastructure/src/repositories/DealRepository';
 import { ProfileRepository } from '../../../Crm.Infrastructure/src/repositories/ProfileRepository';
-import { toDealNoteResponse, toDealResponse } from '../mappers/dealResponseMapper';
+import {
+  toDealDetailResponse,
+  toDealNoteResponse,
+  toDealResponse,
+} from '../mappers/dealResponseMapper';
 import type { Env } from '../types/env';
 import {
   createDealNoteBodySchema,
@@ -55,7 +59,12 @@ function createDealDeps(supabase: Env['Variables']['supabase']) {
 
   return {
     listDealsService: new ListDealsService(dealRepository),
-    getDealByIdService: new GetDealByIdService(dealRepository),
+    getDealDetailService: new GetDealDetailService(
+      dealRepository,
+      clientRepository,
+      dealNoteRepository,
+      dealStageHistoryRepository,
+    ),
     getMeService: new GetMeService(profileRepository),
     updateDealOwnerService: new UpdateDealOwnerService(dealRepository, profileRepository),
     updateDealStageService: new UpdateDealStageService(
@@ -107,8 +116,8 @@ deals.get('/:dealId', async (c) => {
   const supabase = c.get('supabase');
   const deps = createDealDeps(supabase);
 
-  const deal = await deps.getDealByIdService.execute(dealId);
-  if (!deal) {
+  const detail = await deps.getDealDetailService.execute(dealId);
+  if (!detail) {
     throw new ApiError({
       code: 'NOT_FOUND',
       status: HttpStatus.NotFound,
@@ -116,7 +125,7 @@ deals.get('/:dealId', async (c) => {
     });
   }
 
-  return c.json(toDealResponse(deal));
+  return c.json(toDealDetailResponse(detail));
 });
 
 /**

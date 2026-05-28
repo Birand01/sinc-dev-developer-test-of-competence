@@ -1,1 +1,1 @@
-/** Placeholder — dashboard aggregate use-cases go here. */
+export { GetDashboardService } from './GetDashboardService';

@@ -1,3 +1,4 @@
+import type { DealOwnerCount, DealStageCount } from '../../dto/dashboard';
 import type { Deal } from '../../../../Crm.Domain/entities/Deal';
 import type { DealStage } from '../../../../Crm.Domain/enums/DealStage';
 
@@ -31,4 +32,8 @@ export interface IDealRepository {
   create(input: CreateDealRepositoryInput): Promise<Deal>;
   updateStage(dealId: string, stage: DealStage, lostReason: string | null): Promise<Deal>;
   updateOwner(dealId: string, ownerId: string | null): Promise<Deal>;
+  /** Dashboard aggregate: deal counts per pipeline stage (RLS-scoped). */
+  countByStage(): Promise<DealStageCount[]>;
+  /** Dashboard aggregate: deal counts per owner (RLS-scoped). */
+  countByOwner(): Promise<DealOwnerCount[]>;
 }

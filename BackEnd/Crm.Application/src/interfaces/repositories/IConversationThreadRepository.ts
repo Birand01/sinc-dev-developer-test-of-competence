@@ -1,3 +1,4 @@
+import type { ConversationStatusCount } from '../../dto/dashboard';
 import type { ConversationThread } from '../../../../Crm.Domain/entities/ConversationThread';
 import type { ConversationStatus } from '../../../../Crm.Domain/enums/ConversationStatus';
 
@@ -19,4 +20,8 @@ export interface IConversationThreadRepository {
   assignTo(threadId: string, assignedTo: string): Promise<ConversationThread>;
   /** Updates status on a thread. RLS enforces manager vs sales-on-owned-thread rules. */
   updateStatus(threadId: string, status: ConversationStatus): Promise<ConversationThread>;
+  /** Dashboard aggregate: thread counts per status (RLS-scoped). */
+  countByStatus(): Promise<ConversationStatusCount[]>;
+  /** Dashboard aggregate: threads with no assignee (RLS-scoped). */
+  countUnassigned(): Promise<number>;
 }

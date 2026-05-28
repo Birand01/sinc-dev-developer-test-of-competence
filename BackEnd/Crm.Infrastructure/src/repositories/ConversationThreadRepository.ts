@@ -1,7 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { ConversationStatusCount } from '../../../Crm.Application/src/dto/dashboard';
 import type { CreateConversationThreadInput, IConversationThreadRepository } from '../../../Crm.Application/src/interfaces/repositories/IConversationThreadRepository';
 import type { ConversationThread } from '../../../Crm.Domain/entities/ConversationThread';
-import type { ConversationStatus } from '../../../Crm.Domain/enums/ConversationStatus';
+import { ConversationStatus } from '../../../Crm.Domain/enums/ConversationStatus';
+import type { ConversationStatus as ConversationStatusType } from '../../../Crm.Domain/enums/ConversationStatus';
 import {
   toConversationThread,
   type ConversationThreadRow,
@@ -84,7 +86,7 @@ export class ConversationThreadRepository implements IConversationThreadReposito
    * Updates status on a thread. RLS controls who may update.
    * Update without RETURNING: same RLS read-back issue as assignTo.
    */
-  async updateStatus(threadId: string, status: ConversationStatus): Promise<ConversationThread> {
+  async updateStatus(threadId: string, status: ConversationStatusType): Promise<ConversationThread> {
     const { error } = await this.supabase
       .from('conversation_threads')
       .update({ status })
@@ -113,5 +115,37 @@ export class ConversationThreadRepository implements IConversationThreadReposito
 
     throwIfSupabaseError(error, `Failed to load conversation thread ${id}`);
     return mapMaybeSingle(data as ConversationThreadRow | null, toConversationThread);
+  }
+
+  /** Groups visible thread rows by status (RLS-scoped). */
+  async countByStatus(): Promise<ConversationStatusCount[]> {
+    const { data, error } = await this.supabase
+      .from('conversation_threads')
+      .select('status');
+
+    throwIfSupabaseError(error, 'Failed to count conversation threads by status');
+
+    const counts = new Map<ConversationStatusType, number>();
+    for (const status of Object.values(ConversationStatus)) {
+      counts.set(status, 0);
+    }
+
+    for (const row of data ?? []) {
+      const status = row.status as ConversationStatusType;
+      counts.set(status, (counts.get(status) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries()).map(([status, count]) => ({ status, count }));
+  }
+
+  /** Head count of visible threads with no assignee. */
+  async countUnassigned(): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('conversation_threads')
+      .select('*', { count: 'exact', head: true })
+      .is('assigned_to', null);
+
+    throwIfSupabaseError(error, 'Failed to count unassigned conversation threads');
+    return count ?? 0;
   }
 }

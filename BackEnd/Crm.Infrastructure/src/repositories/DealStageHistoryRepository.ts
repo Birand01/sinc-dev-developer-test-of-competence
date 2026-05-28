@@ -4,7 +4,11 @@ import type {
   IDealStageHistoryRepository,
 } from '../../../Crm.Application/src/interfaces/repositories/IDealStageHistoryRepository';
 import type { DealStageHistory } from '../../../Crm.Domain/entities/DealStageHistory';
-import { mapMaybeSingle, throwIfSupabaseError } from '../helpers/repositoryHelpers';
+import {
+  mapMaybeSingle,
+  mapRowsOrEmpty,
+  throwIfSupabaseError,
+} from '../helpers/repositoryHelpers';
 import {
   toDealStageHistory,
   type DealStageHistoryRow,
@@ -59,5 +63,17 @@ export class DealStageHistoryRepository implements IDealStageHistoryRepository {
 
     throwIfSupabaseError(error, `Failed to load deal stage history ${id}`);
     return mapMaybeSingle(data as DealStageHistoryRow | null, toDealStageHistory);
+  }
+
+  /** Returns stage history entries for a deal ordered by newest first. */
+  async listByDealId(dealId: string): Promise<DealStageHistory[]> {
+    const { data, error } = await this.supabase
+      .from('deal_stage_history')
+      .select('*')
+      .eq('deal_id', dealId)
+      .order('created_at', { ascending: false });
+
+    throwIfSupabaseError(error, `Failed to list deal stage history for deal ${dealId}`);
+    return mapRowsOrEmpty(data as DealStageHistoryRow[] | null, toDealStageHistory);
   }
 }

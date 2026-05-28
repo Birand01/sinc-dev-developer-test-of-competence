@@ -24,4 +24,5 @@ export type {
   CreateDealStageHistoryInput,
   IDealStageHistoryRepository,
 } from './IDealStageHistoryRepository';
+export type { IDashboardActivityRepository } from './IDashboardActivityRepository';
 export type { IProfileRepository } from './IProfileRepository';

@@ -1,10 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { DealOwnerCount, DealStageCount } from '../../../Crm.Application/src/dto/dashboard';
 import type {
   CreateDealRepositoryInput,
   DealListFilters,
   IDealRepository,
 } from '../../../Crm.Application/src/interfaces/repositories/IDealRepository';
 import type { Deal } from '../../../Crm.Domain/entities/Deal';
+import { DealStage } from '../../../Crm.Domain/enums/DealStage';
+import type { DealStage as DealStageType } from '../../../Crm.Domain/enums/DealStage';
 import {
   mapMaybeSingle,
   mapRowsOrEmpty,
@@ -144,5 +147,61 @@ export class DealRepository implements IDealRepository {
 
     throwIfSupabaseError(error, `Failed to load deal ${id}`);
     return mapMaybeSingle(data as DealRow | null, toDeal);
+  }
+
+  /** Groups visible deal rows by pipeline stage (RLS-scoped). */
+  async countByStage(): Promise<DealStageCount[]> {
+    const { data, error } = await this.supabase.from('deals').select('stage');
+
+    throwIfSupabaseError(error, 'Failed to count deals by stage');
+
+    const counts = new Map<DealStageType, number>();
+    for (const stage of Object.values(DealStage)) {
+      counts.set(stage, 0);
+    }
+
+    for (const row of data ?? []) {
+      const stage = row.stage as DealStageType;
+      counts.set(stage, (counts.get(stage) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries()).map(([stage, count]) => ({ stage, count }));
+  }
+
+  /** Groups visible deal rows by owner_id; resolves owner display names from profiles. */
+  async countByOwner(): Promise<DealOwnerCount[]> {
+    const { data, error } = await this.supabase.from('deals').select('owner_id');
+
+    throwIfSupabaseError(error, 'Failed to count deals by owner');
+
+    const countsByOwner = new Map<string | null, number>();
+    for (const row of data ?? []) {
+      const ownerId = row.owner_id as string | null;
+      countsByOwner.set(ownerId, (countsByOwner.get(ownerId) ?? 0) + 1);
+    }
+
+    const ownerIds = [...countsByOwner.keys()].filter((id): id is string => id != null);
+    const nameById = new Map<string, string>();
+
+    if (ownerIds.length > 0) {
+      const { data: profiles, error: profileError } = await this.supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', ownerIds);
+
+      throwIfSupabaseError(profileError, 'Failed to load deal owner profiles for dashboard');
+
+      for (const profile of profiles ?? []) {
+        nameById.set(profile.id as string, profile.full_name as string);
+      }
+    }
+
+    return [...countsByOwner.entries()]
+      .map(([ownerId, count]) => ({
+        ownerId,
+        ownerFullName: ownerId ? (nameById.get(ownerId) ?? null) : null,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
   }
 }

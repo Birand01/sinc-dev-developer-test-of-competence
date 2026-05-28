@@ -15,4 +15,5 @@ export interface CreateDealStageHistoryInput {
  */
 export interface IDealStageHistoryRepository {
   create(input: CreateDealStageHistoryInput): Promise<DealStageHistory>;
+  listByDealId(dealId: string): Promise<DealStageHistory[]>;
 }

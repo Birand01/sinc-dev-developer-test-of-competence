@@ -4,7 +4,11 @@ import type {
   IDealNoteRepository,
 } from '../../../Crm.Application/src/interfaces/repositories/IDealNoteRepository';
 import type { DealNote } from '../../../Crm.Domain/entities/DealNote';
-import { mapMaybeSingle, throwIfSupabaseError } from '../helpers/repositoryHelpers';
+import {
+  mapMaybeSingle,
+  mapRowsOrEmpty,
+  throwIfSupabaseError,
+} from '../helpers/repositoryHelpers';
 import { toDealNote, type DealNoteRow } from '../mappers/dealNoteMapper';
 
 /**
@@ -55,5 +59,17 @@ export class DealNoteRepository implements IDealNoteRepository {
 
     throwIfSupabaseError(error, `Failed to load deal note ${id}`);
     return mapMaybeSingle(data as DealNoteRow | null, toDealNote);
+  }
+
+  /** Returns all notes for a deal ordered by newest first. */
+  async listByDealId(dealId: string): Promise<DealNote[]> {
+    const { data, error } = await this.supabase
+      .from('deal_notes')
+      .select('*')
+      .eq('deal_id', dealId)
+      .order('created_at', { ascending: false });
+
+    throwIfSupabaseError(error, `Failed to list deal notes for deal ${dealId}`);
+    return mapRowsOrEmpty(data as DealNoteRow[] | null, toDealNote);
   }
 }

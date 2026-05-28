@@ -13,4 +13,5 @@ export interface CreateDealNoteInput {
  */
 export interface IDealNoteRepository {
   create(input: CreateDealNoteInput): Promise<DealNote>;
+  listByDealId(dealId: string): Promise<DealNote[]>;
 }

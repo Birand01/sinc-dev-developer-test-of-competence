@@ -1,5 +1,6 @@
 import type { Deal } from '../../../Crm.Domain/entities/Deal';
 import type { DealNote } from '../../../Crm.Domain/entities/DealNote';
+import type { DealDetail } from '../../../Crm.Application/src/dto/deals/DealDetail';
 
 /** API response mapper for deal resources. */
 export function toDealResponse(deal: Deal) {
@@ -26,5 +27,22 @@ export function toDealNoteResponse(note: DealNote) {
     authorId: note.authorId,
     body: note.body,
     createdAt: note.createdAt.toISOString(),
+  };
+}
+
+/** API response mapper for rich deal detail resources. */
+export function toDealDetailResponse(detail: DealDetail) {
+  return {
+    deal: toDealResponse(detail.deal),
+    client: detail.client,
+    notes: detail.notes.map(toDealNoteResponse),
+    stageHistory: detail.stageHistory.map((entry) => ({
+      id: entry.id,
+      dealId: entry.dealId,
+      fromStage: entry.fromStage,
+      toStage: entry.toStage,
+      changedBy: entry.changedBy,
+      createdAt: entry.createdAt.toISOString(),
+    })),
   };
 }
