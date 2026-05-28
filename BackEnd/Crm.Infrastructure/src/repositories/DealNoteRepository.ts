@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DealNote } from '../../../Crm.Domain/entities/DealNote';
+import { mapMaybeSingle, throwIfSupabaseError } from '../helpers/repositoryHelpers';
 import { toDealNote, type DealNoteRow } from '../mappers/dealNoteMapper';
 
 /**
@@ -24,14 +25,7 @@ export class DealNoteRepository {
       .eq('id', id)
       .maybeSingle();
 
-    if (error) {
-      throw new Error(`Failed to load deal note ${id}: ${error.message}`);
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    return toDealNote(data as DealNoteRow);
+    throwIfSupabaseError(error, `Failed to load deal note ${id}`);
+    return mapMaybeSingle(data as DealNoteRow | null, toDealNote);
   }
 }

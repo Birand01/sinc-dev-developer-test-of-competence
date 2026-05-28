@@ -6,6 +6,11 @@ import {
   toConversationThread,
   type ConversationThreadRow,
 } from '../mappers/conversationThreadMapper';
+import {
+  mapMaybeSingle,
+  mapRowsOrEmpty,
+  throwIfSupabaseError,
+} from '../helpers/repositoryHelpers';
 
 /**
  * Data access for public.conversation_threads (Supabase Postgres).
@@ -27,15 +32,8 @@ export class ConversationThreadRepository implements IConversationThreadReposito
       .select('*')
       .order('last_message_at', { ascending: false });
 
-    if (error) {
-      throw new Error(`Failed to list conversation threads: ${error.message}`);
-    }
-
-    if (!data?.length) {
-      return [];
-    }
-
-    return data.map((row) => toConversationThread(row as ConversationThreadRow));
+    throwIfSupabaseError(error, 'Failed to list conversation threads');
+    return mapRowsOrEmpty(data as ConversationThreadRow[] | null, toConversationThread);
   }
 
   /**
@@ -52,9 +50,7 @@ export class ConversationThreadRepository implements IConversationThreadReposito
       assigned_to: null,
     });
 
-    if (error) {
-      throw new Error(`Failed to create conversation thread: ${error.message}`);
-    }
+    throwIfSupabaseError(error, 'Failed to create conversation thread');
 
     const thread = await this.getById(id);
     if (!thread) {
@@ -74,9 +70,7 @@ export class ConversationThreadRepository implements IConversationThreadReposito
       .update({ assigned_to: assignedTo })
       .eq('id', threadId);
 
-    if (error) {
-      throw new Error(`Failed to assign conversation thread ${threadId}: ${error.message}`);
-    }
+    throwIfSupabaseError(error, `Failed to assign conversation thread ${threadId}`);
 
     const thread = await this.getById(threadId);
     if (!thread) {
@@ -96,9 +90,7 @@ export class ConversationThreadRepository implements IConversationThreadReposito
       .update({ status })
       .eq('id', threadId);
 
-    if (error) {
-      throw new Error(`Failed to update conversation thread status ${threadId}: ${error.message}`);
-    }
+    throwIfSupabaseError(error, `Failed to update conversation thread status ${threadId}`);
 
     const thread = await this.getById(threadId);
     if (!thread) {
@@ -119,14 +111,7 @@ export class ConversationThreadRepository implements IConversationThreadReposito
       .eq('id', id)
       .maybeSingle();
 
-    if (error) {
-      throw new Error(`Failed to load conversation thread ${id}: ${error.message}`);
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    return toConversationThread(data as ConversationThreadRow);
+    throwIfSupabaseError(error, `Failed to load conversation thread ${id}`);
+    return mapMaybeSingle(data as ConversationThreadRow | null, toConversationThread);
   }
 }

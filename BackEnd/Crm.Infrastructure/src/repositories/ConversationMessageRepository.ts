@@ -5,6 +5,11 @@ import type {
 } from '../../../Crm.Application/src/interfaces/repositories/IConversationMessageRepository';
 import type { ConversationMessage } from '../../../Crm.Domain/entities/ConversationMessage';
 import {
+  mapMaybeSingle,
+  mapRowsOrEmpty,
+  throwIfSupabaseError,
+} from '../helpers/repositoryHelpers';
+import {
   toConversationMessage,
   type ConversationMessageRow,
 } from '../mappers/conversationMessageMapper';
@@ -35,9 +40,7 @@ export class ConversationMessageRepository implements IConversationMessageReposi
       body: input.body,
     });
 
-    if (error) {
-      throw new Error(`Failed to create conversation message: ${error.message}`);
-    }
+    throwIfSupabaseError(error, 'Failed to create conversation message');
 
     const message = await this.getById(id);
     if (!message) {
@@ -57,15 +60,8 @@ export class ConversationMessageRepository implements IConversationMessageReposi
       .eq('thread_id', threadId)
       .order('created_at', { ascending: true });
 
-    if (error) {
-      throw new Error(`Failed to list conversation messages for thread ${threadId}: ${error.message}`);
-    }
-
-    if (!data?.length) {
-      return [];
-    }
-
-    return data.map((row) => toConversationMessage(row as ConversationMessageRow));
+    throwIfSupabaseError(error, `Failed to list conversation messages for thread ${threadId}`);
+    return mapRowsOrEmpty(data as ConversationMessageRow[] | null, toConversationMessage);
   }
 
   /**
@@ -79,14 +75,7 @@ export class ConversationMessageRepository implements IConversationMessageReposi
       .eq('id', id)
       .maybeSingle();
 
-    if (error) {
-      throw new Error(`Failed to load conversation message ${id}: ${error.message}`);
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    return toConversationMessage(data as ConversationMessageRow);
+    throwIfSupabaseError(error, `Failed to load conversation message ${id}`);
+    return mapMaybeSingle(data as ConversationMessageRow | null, toConversationMessage);
   }
 }

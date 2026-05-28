@@ -5,6 +5,11 @@ import type {
   IDealRepository,
 } from '../../../Crm.Application/src/interfaces/repositories/IDealRepository';
 import type { Deal } from '../../../Crm.Domain/entities/Deal';
+import {
+  mapMaybeSingle,
+  mapRowsOrEmpty,
+  throwIfSupabaseError,
+} from '../helpers/repositoryHelpers';
 import { toDeal, type DealRow } from '../mappers/dealMapper';
 
 /**
@@ -48,14 +53,8 @@ export class DealRepository implements IDealRepository {
 
     // Execute query and map rows to domain Deal entities.
     const { data, error } = await query;
-    if (error) {
-      throw new Error(`Failed to list deals: ${error.message}`);
-    }
-    if (!data?.length) {
-      return [];
-    }
-
-    return data.map((row) => toDeal(row as DealRow));
+    throwIfSupabaseError(error, 'Failed to list deals');
+    return mapRowsOrEmpty(data as DealRow[] | null, toDeal);
   }
 
   /**
@@ -77,13 +76,56 @@ export class DealRepository implements IDealRepository {
       lost_reason: input.lostReason,
     });
 
-    if (error) {
-      throw new Error(`Failed to create deal: ${error.message}`);
-    }
+    throwIfSupabaseError(error, 'Failed to create deal');
 
     const deal = await this.getById(id);
     if (!deal) {
       throw new Error(`Failed to load deal ${id} after insert`);
+    }
+
+    return deal;
+  }
+
+  /**
+   * Updates stage/lost_reason on a deal. RLS controls who may update.
+   * Update without RETURNING: avoids RLS read-back issues seen with update().select().
+   */
+  async updateStage(dealId: string, stage: CreateDealRepositoryInput['stage'], lostReason: string | null): Promise<Deal> {
+    const { error } = await this.supabase
+      .from('deals')
+      .update({
+        stage,
+        lost_reason: lostReason,
+      })
+      .eq('id', dealId);
+
+    throwIfSupabaseError(error, `Failed to update deal stage ${dealId}`);
+
+    const deal = await this.getById(dealId);
+    if (!deal) {
+      throw new Error(`Failed to load deal ${dealId} after stage update`);
+    }
+
+    return deal;
+  }
+
+  /**
+   * Updates owner_id on a deal. RLS controls who may reassign ownership.
+   * Update without RETURNING: avoids read-back failures on update().select().
+   */
+  async updateOwner(dealId: string, ownerId: string | null): Promise<Deal> {
+    const { error } = await this.supabase
+      .from('deals')
+      .update({
+        owner_id: ownerId,
+      })
+      .eq('id', dealId);
+
+    throwIfSupabaseError(error, `Failed to update deal owner ${dealId}`);
+
+    const deal = await this.getById(dealId);
+    if (!deal) {
+      throw new Error(`Failed to load deal ${dealId} after owner update`);
     }
 
     return deal;
@@ -100,14 +142,7 @@ export class DealRepository implements IDealRepository {
       .eq('id', id)
       .maybeSingle();
 
-    if (error) {
-      throw new Error(`Failed to load deal ${id}: ${error.message}`);
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    return toDeal(data as DealRow);
+    throwIfSupabaseError(error, `Failed to load deal ${id}`);
+    return mapMaybeSingle(data as DealRow | null, toDeal);
   }
 }

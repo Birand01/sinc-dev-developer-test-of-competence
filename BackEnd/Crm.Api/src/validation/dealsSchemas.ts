@@ -9,6 +9,17 @@ const nullableTrimmedString = z
     return trimmed.length > 0 ? trimmed : null;
   });
 
+const nullableTrimmedUuid = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((value) => {
+    if (value == null) return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  })
+  .refine((value) => value === null || z.string().uuid().safeParse(value).success, {
+    message: 'Expected a valid UUID',
+  });
+
 const requiredTrimmedString = z.string().trim().min(1);
 
 /** Body schema for POST /api/deals. */
@@ -31,5 +42,18 @@ export const listDealsQuerySchema = z.object({
   q: nullableTrimmedString.optional(),
 });
 
+/** Body schema for PATCH /api/deals/:dealId/stage. */
+export const updateDealStageBodySchema = z.object({
+  stage: z.enum(Object.values(DealStage) as [string, ...string[]]),
+  lostReason: nullableTrimmedString,
+});
+
+/** Body schema for PATCH /api/deals/:dealId/owner. */
+export const updateDealOwnerBodySchema = z.object({
+  ownerId: nullableTrimmedUuid,
+});
+
 export type CreateDealBody = z.infer<typeof createDealBodySchema>;
 export type ListDealsQuery = z.infer<typeof listDealsQuerySchema>;
+export type UpdateDealStageBody = z.infer<typeof updateDealStageBodySchema>;
+export type UpdateDealOwnerBody = z.infer<typeof updateDealOwnerBodySchema>;

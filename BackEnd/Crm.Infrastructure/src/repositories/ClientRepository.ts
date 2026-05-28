@@ -5,6 +5,11 @@ import type {
   IClientRepository,
 } from '../../../Crm.Application/src/interfaces/repositories/IClientRepository';
 import type { Client } from '../../../Crm.Domain/entities/Client';
+import {
+  mapMaybeSingle,
+  mapRowsOrEmpty,
+  throwIfSupabaseError,
+} from '../helpers/repositoryHelpers';
 import { toClient, type ClientRow } from '../mappers/clientMapper';
 
 /**
@@ -31,15 +36,8 @@ export class ClientRepository implements IClientRepository {
       .eq('id', id)
       .maybeSingle();
 
-    if (error) {
-      throw new Error(`Failed to load client ${id}: ${error.message}`);
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    return toClient(data as ClientRow);
+    throwIfSupabaseError(error, `Failed to load client ${id}`);
+    return mapMaybeSingle(data as ClientRow | null, toClient);
   }
 
   /**
@@ -62,16 +60,8 @@ export class ClientRepository implements IClientRepository {
     }
 
     const { data, error } = await query;
-
-    if (error) {
-      throw new Error(`Failed to list clients: ${error.message}`);
-    }
-
-    if (!data?.length) {
-      return [];
-    }
-
-    return data.map((row) => toClient(row as ClientRow));
+    throwIfSupabaseError(error, 'Failed to list clients');
+    return mapRowsOrEmpty(data as ClientRow[] | null, toClient);
   }
 
   /**
@@ -93,10 +83,11 @@ export class ClientRepository implements IClientRepository {
       .select('*')
       .single();
 
-    if (error) {
-      throw new Error(`Failed to create client: ${error.message}`);
+    throwIfSupabaseError(error, 'Failed to create client');
+    const created = mapMaybeSingle(data as ClientRow | null, toClient);
+    if (!created) {
+      throw new Error('Failed to load created client row');
     }
-
-    return toClient(data as ClientRow);
+    return created;
   }
 }

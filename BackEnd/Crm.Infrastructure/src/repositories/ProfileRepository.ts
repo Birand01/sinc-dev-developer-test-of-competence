@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IProfileRepository } from '../../../Crm.Application/src/interfaces/repositories/IProfileRepository';
 import type { Profile } from '../../../Crm.Domain/entities/Profile';
+import { mapMaybeSingle, throwIfSupabaseError } from '../helpers/repositoryHelpers';
 import { toProfile, type ProfileRow } from '../mappers/profileMapper';
 /**
  * Data access for public.profiles (Supabase Postgres).
@@ -25,14 +26,7 @@ export class ProfileRepository implements IProfileRepository {
       .eq('id', id)
       .maybeSingle();
 
-    if (error) {
-      throw new Error(`Failed to load profile ${id}: ${error.message}`);
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    return toProfile(data as ProfileRow);
+    throwIfSupabaseError(error, `Failed to load profile ${id}`);
+    return mapMaybeSingle(data as ProfileRow | null, toProfile);
   }
 }

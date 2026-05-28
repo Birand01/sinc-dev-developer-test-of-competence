@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DealStageHistory } from '../../../Crm.Domain/entities/DealStageHistory';
+import { mapMaybeSingle, throwIfSupabaseError } from '../helpers/repositoryHelpers';
 import {
   toDealStageHistory,
   type DealStageHistoryRow,
@@ -27,14 +28,7 @@ export class DealStageHistoryRepository {
       .eq('id', id)
       .maybeSingle();
 
-    if (error) {
-      throw new Error(`Failed to load deal stage history ${id}: ${error.message}`);
-    }
-
-    if (!data) {
-      return null;
-    }
-
-    return toDealStageHistory(data as DealStageHistoryRow);
+    throwIfSupabaseError(error, `Failed to load deal stage history ${id}`);
+    return mapMaybeSingle(data as DealStageHistoryRow | null, toDealStageHistory);
   }
 }

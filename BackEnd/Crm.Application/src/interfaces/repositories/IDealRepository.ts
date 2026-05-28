@@ -29,4 +29,6 @@ export interface IDealRepository {
   getById(id: string): Promise<Deal | null>;
   list(filters?: DealListFilters): Promise<Deal[]>;
   create(input: CreateDealRepositoryInput): Promise<Deal>;
+  updateStage(dealId: string, stage: DealStage, lostReason: string | null): Promise<Deal>;
+  updateOwner(dealId: string, ownerId: string | null): Promise<Deal>;
 }
