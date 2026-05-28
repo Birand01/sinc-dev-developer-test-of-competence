@@ -10,6 +10,7 @@ import { HttpStatus } from './http/HttpStatus';
 import { auth } from './middleware/auth';
 import { clients } from './routes/clients';
 import { conversations } from './routes/conversations';
+import { deals } from './routes/deals';
 import { users } from './routes/users';
 import type { Env } from './types/env';
 
@@ -47,6 +48,7 @@ api.use('*', auth);
 api.route('/', users); // GET /me → full path /api/me
 api.route('/clients', clients); // GET /:clientId → /api/clients/:clientId
 api.route('/conversations', conversations); // GET /:threadId → /api/conversations/:threadId
+api.route('/deals', deals); // POST / → /api/deals
 
 app.route('/api', api);
 

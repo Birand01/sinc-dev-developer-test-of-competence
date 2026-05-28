@@ -15,9 +15,21 @@ export class UpdateConversationStatusError extends Error {
 }
 
 /** Factory for status update use-case failures. */
+const UPDATE_CONVERSATION_STATUS_ERROR_MESSAGES: Record<
+  UpdateConversationStatusFailureReason,
+  string
+> = {
+  THREAD_NOT_FOUND: 'Conversation thread not found',
+  FORBIDDEN: 'Not allowed to update status on this conversation',
+  INVALID_STATUS: 'status must be open, pending, or closed',
+};
+
 export function updateConversationStatusError(
   reason: UpdateConversationStatusFailureReason,
-  message: string,
+  message?: string,
 ): UpdateConversationStatusError {
-  return new UpdateConversationStatusError(reason, message);
+  return new UpdateConversationStatusError(
+    reason,
+    message ?? UPDATE_CONVERSATION_STATUS_ERROR_MESSAGES[reason],
+  );
 }

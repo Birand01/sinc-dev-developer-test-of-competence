@@ -1,1 +1,2 @@
-/** Placeholder — deal pipeline use-cases (e.g. CreateDealService) go here. */
+export { CreateDealService } from './CreateDealService';
+export { GetDealByIdService } from './GetDealByIdService';

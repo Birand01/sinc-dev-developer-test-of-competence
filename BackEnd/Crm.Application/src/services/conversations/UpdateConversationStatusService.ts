@@ -36,22 +36,16 @@ export class UpdateConversationStatusService {
   ): Promise<ConversationThread> {
     const status = parseStatus(input.status);
     if (!status) {
-      throw updateConversationStatusError(
-        'INVALID_STATUS',
-        'status must be open, pending, or closed',
-      );
+      throw updateConversationStatusError('INVALID_STATUS');
     }
 
     const thread = await this.conversationThreadRepository.getById(threadId);
     if (!thread) {
-      throw updateConversationStatusError('THREAD_NOT_FOUND', 'Conversation thread not found');
+      throw updateConversationStatusError('THREAD_NOT_FOUND');
     }
 
     if (!canUpdateThreadStatus(actor, thread)) {
-      throw updateConversationStatusError(
-        'FORBIDDEN',
-        'Not allowed to update status on this conversation',
-      );
+      throw updateConversationStatusError('FORBIDDEN');
     }
 
     return this.conversationThreadRepository.updateStatus(threadId, status);

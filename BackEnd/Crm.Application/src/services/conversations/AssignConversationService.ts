@@ -29,30 +29,24 @@ export class AssignConversationService {
   ): Promise<ConversationThread> {
     const thread = await this.conversationThreadRepository.getById(threadId);
     if (!thread) {
-      throw assignConversationError('THREAD_NOT_FOUND', 'Conversation thread not found');
+      throw assignConversationError('THREAD_NOT_FOUND');
     }
 
     if (!canAssignThread(actor, thread)) {
-      throw assignConversationError('FORBIDDEN', 'Not allowed to assign this conversation');
+      throw assignConversationError('FORBIDDEN');
     }
 
     if (isSales(actor) && input.assignedTo !== actor.id) {
-      throw assignConversationError(
-        'SALES_MUST_CLAIM_SELF',
-        'Sales can only assign unassigned threads to themselves',
-      );
+      throw assignConversationError('SALES_MUST_CLAIM_SELF');
     }
 
     const assignee = await this.profileRepository.getById(input.assignedTo);
     if (!assignee) {
-      throw assignConversationError('ASSIGNEE_NOT_FOUND', 'Assignee profile not found');
+      throw assignConversationError('ASSIGNEE_NOT_FOUND');
     }
 
     if (assignee.role !== AppRole.Sales) {
-      throw assignConversationError(
-        'ASSIGNEE_NOT_SALES',
-        'Conversation can only be assigned to a sales user',
-      );
+      throw assignConversationError('ASSIGNEE_NOT_SALES');
     }
 
     return this.conversationThreadRepository.assignTo(threadId, input.assignedTo);
