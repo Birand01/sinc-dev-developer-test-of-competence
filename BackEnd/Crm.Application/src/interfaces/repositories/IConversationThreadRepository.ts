@@ -15,6 +15,8 @@ export interface CreateConversationThreadInput {
 export interface IConversationThreadRepository {
   getById(id: string): Promise<ConversationThread | null>;
   list(): Promise<ConversationThread[]>;
+  /** Threads for one client, newest activity first (RLS-scoped). */
+  listByClientId(clientId: string): Promise<ConversationThread[]>;
   create(input: CreateConversationThreadInput): Promise<ConversationThread>;
   /** Sets assigned_to on a thread. RLS enforces manager vs sales claim rules. */
   assignTo(threadId: string, assignedTo: string): Promise<ConversationThread>;

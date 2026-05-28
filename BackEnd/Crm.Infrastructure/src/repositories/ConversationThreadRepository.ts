@@ -39,6 +39,20 @@ export class ConversationThreadRepository implements IConversationThreadReposito
   }
 
   /**
+   * Lists threads for one client visible under RLS, newest activity first.
+   */
+  async listByClientId(clientId: string): Promise<ConversationThread[]> {
+    const { data, error } = await this.supabase
+      .from('conversation_threads')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('last_message_at', { ascending: false });
+
+    throwIfSupabaseError(error, `Failed to list conversation threads for client ${clientId}`);
+    return mapRowsOrEmpty(data as ConversationThreadRow[] | null, toConversationThread);
+  }
+
+  /**
    * Inserts a new thread (unassigned, status open). RLS controls who may insert.
    * Insert without RETURNING: PostgREST insert+select can fail SELECT policy even when insert succeeds.
    */

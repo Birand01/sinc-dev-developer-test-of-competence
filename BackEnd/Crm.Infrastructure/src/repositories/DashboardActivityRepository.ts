@@ -29,6 +29,70 @@ function readClientId(ref: ThreadClientRef | DealClientRef): string | undefined 
 /**
  * Merges recent messages, stage changes, and notes into one activity feed (RLS-scoped).
  */
+function mergeActivityRows(
+  messagesResult: { data: unknown[] | null },
+  stageHistoryResult: { data: unknown[] | null },
+  notesResult: { data: unknown[] | null },
+  fallbackClientId?: string,
+): DashboardActivityItem[] {
+  const items: DashboardActivityItem[] = [];
+
+  for (const row of messagesResult.data ?? []) {
+    const messageRow = row as {
+      thread_id: string;
+      body: string;
+      created_at: string;
+      conversation_threads: ThreadClientRef;
+    };
+    const threadRef = messageRow.conversation_threads;
+    items.push({
+      type: 'conversation_message',
+      occurredAt: new Date(messageRow.created_at),
+      summary: `Message: ${truncateSummary(messageRow.body)}`,
+      threadId: messageRow.thread_id,
+      clientId: readClientId(threadRef) ?? fallbackClientId,
+    });
+  }
+
+  for (const row of stageHistoryResult.data ?? []) {
+    const historyRow = row as {
+      deal_id: string;
+      from_stage: string | null;
+      to_stage: string;
+      created_at: string;
+      deals: DealClientRef;
+    };
+    const fromStage = historyRow.from_stage;
+    const toStage = historyRow.to_stage;
+    const stageLabel = fromStage ? `${fromStage} → ${toStage}` : toStage;
+    items.push({
+      type: 'deal_stage_change',
+      occurredAt: new Date(historyRow.created_at),
+      summary: `Deal stage: ${stageLabel}`,
+      dealId: historyRow.deal_id,
+      clientId: readClientId(historyRow.deals) ?? fallbackClientId,
+    });
+  }
+
+  for (const row of notesResult.data ?? []) {
+    const noteRow = row as {
+      deal_id: string;
+      body: string;
+      created_at: string;
+      deals: DealClientRef;
+    };
+    items.push({
+      type: 'deal_note',
+      occurredAt: new Date(noteRow.created_at),
+      summary: `Deal note: ${truncateSummary(noteRow.body)}`,
+      dealId: noteRow.deal_id,
+      clientId: readClientId(noteRow.deals) ?? fallbackClientId,
+    });
+  }
+
+  return items;
+}
+
 export class DashboardActivityRepository implements IDashboardActivityRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
@@ -57,45 +121,52 @@ export class DashboardActivityRepository implements IDashboardActivityRepository
     throwIfSupabaseError(stageHistoryResult.error, 'Failed to load recent deal stage history');
     throwIfSupabaseError(notesResult.error, 'Failed to load recent deal notes');
 
-    const items: DashboardActivityItem[] = [];
+    return mergeActivityRows(messagesResult, stageHistoryResult, notesResult)
+      .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
+      .slice(0, safeLimit);
+  }
 
-    for (const row of messagesResult.data ?? []) {
-      const threadRef = row.conversation_threads as ThreadClientRef;
-      items.push({
-        type: 'conversation_message',
-        occurredAt: new Date(row.created_at as string),
-        summary: `Message: ${truncateSummary(row.body as string)}`,
-        threadId: row.thread_id as string,
-        clientId: readClientId(threadRef),
-      });
-    }
+  async listRecentActivityByClientId(
+    clientId: string,
+    limit: number,
+  ): Promise<DashboardActivityItem[]> {
+    const safeLimit = Math.max(1, Math.min(limit, 50));
 
-    for (const row of stageHistoryResult.data ?? []) {
-      const dealRef = row.deals as DealClientRef;
-      const fromStage = row.from_stage as string | null;
-      const toStage = row.to_stage as string;
-      const stageLabel = fromStage ? `${fromStage} → ${toStage}` : toStage;
-      items.push({
-        type: 'deal_stage_change',
-        occurredAt: new Date(row.created_at as string),
-        summary: `Deal stage: ${stageLabel}`,
-        dealId: row.deal_id as string,
-        clientId: readClientId(dealRef),
-      });
-    }
+    const [messagesResult, stageHistoryResult, notesResult] = await Promise.all([
+      this.supabase
+        .from('conversation_messages')
+        .select('id, thread_id, body, created_at, conversation_threads!inner(client_id)')
+        .eq('conversation_threads.client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(safeLimit),
+      this.supabase
+        .from('deal_stage_history')
+        .select('id, deal_id, from_stage, to_stage, created_at, deals!inner(client_id)')
+        .eq('deals.client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(safeLimit),
+      this.supabase
+        .from('deal_notes')
+        .select('id, deal_id, body, created_at, deals!inner(client_id)')
+        .eq('deals.client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(safeLimit),
+    ]);
 
-    for (const row of notesResult.data ?? []) {
-      const dealRef = row.deals as DealClientRef;
-      items.push({
-        type: 'deal_note',
-        occurredAt: new Date(row.created_at as string),
-        summary: `Deal note: ${truncateSummary(row.body as string)}`,
-        dealId: row.deal_id as string,
-        clientId: readClientId(dealRef),
-      });
-    }
+    throwIfSupabaseError(
+      messagesResult.error,
+      `Failed to load recent conversation messages for client ${clientId}`,
+    );
+    throwIfSupabaseError(
+      stageHistoryResult.error,
+      `Failed to load recent deal stage history for client ${clientId}`,
+    );
+    throwIfSupabaseError(
+      notesResult.error,
+      `Failed to load recent deal notes for client ${clientId}`,
+    );
 
-    return items
+    return mergeActivityRows(messagesResult, stageHistoryResult, notesResult, clientId)
       .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
       .slice(0, safeLimit);
   }
