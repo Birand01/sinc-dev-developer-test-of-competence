@@ -16,4 +16,8 @@ export type {
   DealListFilters,
   IDealRepository,
 } from './IDealRepository';
+export type {
+  CreateDealStageHistoryInput,
+  IDealStageHistoryRepository,
+} from './IDealStageHistoryRepository';
 export type { IProfileRepository } from './IProfileRepository';

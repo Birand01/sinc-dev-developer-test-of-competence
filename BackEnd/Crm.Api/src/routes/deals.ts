@@ -24,6 +24,7 @@ import {
 } from '../errors';
 import { HttpStatus } from '../http/HttpStatus';
 import { ClientRepository } from '../../../Crm.Infrastructure/src/repositories/ClientRepository';
+import { DealStageHistoryRepository } from '../../../Crm.Infrastructure/src/repositories/DealStageHistoryRepository';
 import { DealRepository } from '../../../Crm.Infrastructure/src/repositories/DealRepository';
 import { ProfileRepository } from '../../../Crm.Infrastructure/src/repositories/ProfileRepository';
 import { toDealResponse } from '../mappers/dealResponseMapper';
@@ -41,6 +42,7 @@ const deals = new Hono<Env>();
 // Request-scoped dependency factory for deals routes (keeps endpoint wiring concise).
 function createDealDeps(supabase: Env['Variables']['supabase']) {
   const dealRepository = new DealRepository(supabase);
+  const dealStageHistoryRepository = new DealStageHistoryRepository(supabase);
   const profileRepository = new ProfileRepository(supabase);
   const clientRepository = new ClientRepository(supabase);
 
@@ -49,7 +51,10 @@ function createDealDeps(supabase: Env['Variables']['supabase']) {
     getDealByIdService: new GetDealByIdService(dealRepository),
     getMeService: new GetMeService(profileRepository),
     updateDealOwnerService: new UpdateDealOwnerService(dealRepository, profileRepository),
-    updateDealStageService: new UpdateDealStageService(dealRepository),
+    updateDealStageService: new UpdateDealStageService(
+      dealRepository,
+      dealStageHistoryRepository,
+    ),
     createDealService: new CreateDealService(
       dealRepository,
       clientRepository,
