@@ -23,5 +23,9 @@ export function mapUpdateConversationStatusError(err: UpdateConversationStatusEr
         status: HttpStatus.BadRequest,
         message: err.message,
       });
+    default: {
+      const exhaustive: never = err.reason;
+      throw new Error(`Unhandled update conversation status reason: ${exhaustive}`);
+    }
   }
 }

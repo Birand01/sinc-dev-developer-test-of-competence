@@ -1,6 +1,14 @@
 import type { Deal } from '../../../../Crm.Domain/entities/Deal';
 import type { DealStage } from '../../../../Crm.Domain/enums/DealStage';
 
+/** Filters for GET /api/deals query params. */
+export interface DealListFilters {
+  stage?: DealStage;
+  ownerId?: string;
+  clientId?: string;
+  q?: string;
+}
+
 /** Body fields used when creating a deal. */
 export interface CreateDealRepositoryInput {
   clientId: string;
@@ -19,5 +27,6 @@ export interface CreateDealRepositoryInput {
  */
 export interface IDealRepository {
   getById(id: string): Promise<Deal | null>;
+  list(filters?: DealListFilters): Promise<Deal[]>;
   create(input: CreateDealRepositoryInput): Promise<Deal>;
 }

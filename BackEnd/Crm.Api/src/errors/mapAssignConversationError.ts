@@ -25,5 +25,9 @@ export function mapAssignConversationError(err: AssignConversationError): ApiErr
         status: HttpStatus.BadRequest,
         message: err.message,
       });
+    default: {
+      const exhaustive: never = err.reason;
+      throw new Error(`Unhandled assign conversation reason: ${exhaustive}`);
+    }
   }
 }

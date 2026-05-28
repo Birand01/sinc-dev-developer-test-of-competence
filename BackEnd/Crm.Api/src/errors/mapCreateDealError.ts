@@ -29,5 +29,9 @@ export function mapCreateDealError(err: CreateDealError): ApiError {
         status: HttpStatus.BadRequest,
         message: err.message,
       });
+    default: {
+      const exhaustive: never = err.reason;
+      throw new Error(`Unhandled create deal reason: ${exhaustive}`);
+    }
   }
 }

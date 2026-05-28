@@ -5,15 +5,63 @@ import {
   CreateDealService,
   GetDealByIdService,
   GetMeService,
+  ListDealsService,
 } from '../../../Crm.Application/src/services';
+import type { DealListFilters } from '../../../Crm.Application/src/interfaces/repositories/IDealRepository';
 import { ApiError, mapCreateDealError } from '../errors';
 import { HttpStatus } from '../http/HttpStatus';
 import { ClientRepository } from '../../../Crm.Infrastructure/src/repositories/ClientRepository';
 import { DealRepository } from '../../../Crm.Infrastructure/src/repositories/DealRepository';
 import { ProfileRepository } from '../../../Crm.Infrastructure/src/repositories/ProfileRepository';
+import { toDealResponse } from '../mappers/dealResponseMapper';
 import type { Env } from '../types/env';
+import { createDealBodySchema, listDealsQuerySchema } from '../validation/dealsSchemas';
+import { parseBodyOrThrow, parseQueryOrThrow } from '../validation/parseHelpers';
 
 const deals = new Hono<Env>();
+
+// Request-scoped dependency factory for deals routes (keeps endpoint wiring concise).
+function createDealDeps(supabase: Env['Variables']['supabase']) {
+  const dealRepository = new DealRepository(supabase);
+  const profileRepository = new ProfileRepository(supabase);
+  const clientRepository = new ClientRepository(supabase);
+
+  return {
+    listDealsService: new ListDealsService(dealRepository),
+    getDealByIdService: new GetDealByIdService(dealRepository),
+    getMeService: new GetMeService(profileRepository),
+    createDealService: new CreateDealService(
+      dealRepository,
+      clientRepository,
+      profileRepository,
+    ),
+  };
+}
+
+/**
+ * GET /api/deals
+ */
+deals.get('/', async (c) => {
+  const supabase = c.get('supabase');
+  const deps = createDealDeps(supabase);
+
+  const query = parseQueryOrThrow(listDealsQuerySchema, {
+    stage: c.req.query('stage'),
+    ownerId: c.req.query('ownerId'),
+    clientId: c.req.query('clientId'),
+    q: c.req.query('q'),
+  });
+  const filters: DealListFilters = {
+    stage: query.stage as DealListFilters['stage'],
+    ownerId: query.ownerId ?? undefined,
+    clientId: query.clientId ?? undefined,
+    q: query.q ?? undefined,
+  };
+
+  const items = await deps.listDealsService.execute(filters);
+
+  return c.json(items.map(toDealResponse));
+});
 
 /**
  * GET /api/deals/:dealId
@@ -21,8 +69,9 @@ const deals = new Hono<Env>();
 deals.get('/:dealId', async (c) => {
   const dealId = c.req.param('dealId');
   const supabase = c.get('supabase');
+  const deps = createDealDeps(supabase);
 
-  const deal = await new GetDealByIdService(new DealRepository(supabase)).execute(dealId);
+  const deal = await deps.getDealByIdService.execute(dealId);
   if (!deal) {
     throw new ApiError({
       code: 'NOT_FOUND',
@@ -31,19 +80,7 @@ deals.get('/:dealId', async (c) => {
     });
   }
 
-  return c.json({
-    id: deal.id,
-    clientId: deal.clientId,
-    ownerId: deal.ownerId,
-    title: deal.title,
-    stage: deal.stage,
-    valueAmount: deal.valueAmount,
-    valueCurrency: deal.valueCurrency,
-    expectedIntake: deal.expectedIntake,
-    lostReason: deal.lostReason,
-    createdAt: deal.createdAt.toISOString(),
-    updatedAt: deal.updatedAt.toISOString(),
-  });
+  return c.json(toDealResponse(deal));
 });
 
 /**
@@ -51,11 +88,12 @@ deals.get('/:dealId', async (c) => {
  */
 deals.post('/', async (c) => {
   const supabase = c.get('supabase');
+  const deps = createDealDeps(supabase);
   const userId = c.get('userId');
 
-  let body: unknown;
+  let rawBody: unknown;
   try {
-    body = await c.req.json();
+    rawBody = await c.req.json();
   } catch {
     throw new ApiError({
       code: 'INVALID_JSON',
@@ -64,72 +102,9 @@ deals.post('/', async (c) => {
     });
   }
 
-  if (
-    typeof body !== 'object' ||
-    body === null ||
-    typeof (body as { clientId?: unknown }).clientId !== 'string' ||
-    typeof (body as { title?: unknown }).title !== 'string'
-  ) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'clientId and title are required',
-    });
-  }
+  const input: CreateDealInput = parseBodyOrThrow(createDealBodySchema, rawBody);
 
-  const raw = body as {
-    clientId: string;
-    title: string;
-    ownerId?: unknown;
-    expectedIntake?: unknown;
-    valueAmount?: unknown;
-    valueCurrency?: unknown;
-  };
-
-  if (
-    (raw.ownerId !== undefined && raw.ownerId !== null && typeof raw.ownerId !== 'string') ||
-    (raw.expectedIntake !== undefined &&
-      raw.expectedIntake !== null &&
-      typeof raw.expectedIntake !== 'string') ||
-    (raw.valueCurrency !== undefined &&
-      raw.valueCurrency !== null &&
-      typeof raw.valueCurrency !== 'string') ||
-    (raw.valueAmount !== undefined &&
-      raw.valueAmount !== null &&
-      typeof raw.valueAmount !== 'number')
-  ) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message:
-        'ownerId, expectedIntake, valueAmount, and valueCurrency must be valid nullable fields',
-    });
-  }
-
-  const input: CreateDealInput = {
-    clientId: raw.clientId.trim(),
-    title: raw.title.trim(),
-    ownerId: typeof raw.ownerId === 'string' ? raw.ownerId.trim() : null,
-    expectedIntake:
-      typeof raw.expectedIntake === 'string' ? raw.expectedIntake.trim() : null,
-    valueAmount: typeof raw.valueAmount === 'number' ? raw.valueAmount : null,
-    valueCurrency:
-      typeof raw.valueCurrency === 'string' ? raw.valueCurrency.trim() : null,
-  };
-
-  if (!input.clientId || !input.title) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'clientId and title are required',
-    });
-  }
-
-  if (input.ownerId === '') input.ownerId = null;
-  if (input.expectedIntake === '') input.expectedIntake = null;
-  if (input.valueCurrency === '') input.valueCurrency = null;
-
-  const profile = await new GetMeService(new ProfileRepository(supabase)).execute(userId);
+  const profile = await deps.getMeService.execute(userId);
   if (!profile) {
     throw new ApiError({
       code: 'NOT_FOUND_PROFILE',
@@ -139,28 +114,9 @@ deals.post('/', async (c) => {
   }
 
   try {
-    const deal = await new CreateDealService(
-      new DealRepository(supabase),
-      new ClientRepository(supabase),
-      new ProfileRepository(supabase),
-    ).execute(input, profile);
+    const deal = await deps.createDealService.execute(input, profile);
 
-    return c.json(
-      {
-        id: deal.id,
-        clientId: deal.clientId,
-        ownerId: deal.ownerId,
-        title: deal.title,
-        stage: deal.stage,
-        valueAmount: deal.valueAmount,
-        valueCurrency: deal.valueCurrency,
-        expectedIntake: deal.expectedIntake,
-        lostReason: deal.lostReason,
-        createdAt: deal.createdAt.toISOString(),
-        updatedAt: deal.updatedAt.toISOString(),
-      },
-      HttpStatus.Created,
-    );
+    return c.json(toDealResponse(deal), HttpStatus.Created);
   } catch (err) {
     if (err instanceof CreateDealError) {
       // Keep HTTP mapping centralized in Crm.Api/errors.

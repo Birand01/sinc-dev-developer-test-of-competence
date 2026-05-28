@@ -23,7 +23,18 @@ import { ConversationMessageRepository } from '../../../Crm.Infrastructure/src/r
 import { ConversationThreadRepository } from '../../../Crm.Infrastructure/src/repositories/ConversationThreadRepository';
 import { ProfileRepository } from '../../../Crm.Infrastructure/src/repositories/ProfileRepository';
 import { HttpStatus } from '../http/HttpStatus';
+import {
+  toConversationMessageResponse,
+  toConversationThreadResponse,
+} from '../mappers/conversationResponseMapper';
 import type { Env } from '../types/env';
+import {
+  assignConversationBodySchema,
+  createConversationBodySchema,
+  sendConversationMessageBodySchema,
+  updateConversationStatusBodySchema,
+} from '../validation/conversationsSchemas';
+import { parseBodyOrThrow } from '../validation/parseHelpers';
 
 /**
  * Conversation routes under /api/conversations (see app.ts mount).
@@ -31,29 +42,37 @@ import type { Env } from '../types/env';
  */
 const conversations = new Hono<Env>();
 
+// Request-scoped dependency factory for conversations routes (shared service/repository wiring).
+function createConversationDeps(supabase: Env['Variables']['supabase']) {
+  const threadRepository = new ConversationThreadRepository(supabase);
+  const messageRepository = new ConversationMessageRepository(supabase);
+  const profileRepository = new ProfileRepository(supabase);
+
+  return {
+    listConversationThreadsService: new ListConversationThreadsService(threadRepository),
+    createConversationService: new CreateConversationService(threadRepository, messageRepository),
+    getConversationThreadByIdService: new GetConversationThreadByIdService(threadRepository),
+    getMeService: new GetMeService(profileRepository),
+    sendMessageService: new SendMessageService(messageRepository),
+    listConversationMessagesService: new ListConversationMessagesService(messageRepository),
+    assignConversationService: new AssignConversationService(
+      threadRepository,
+      profileRepository,
+    ),
+    updateConversationStatusService: new UpdateConversationStatusService(threadRepository),
+  };
+}
+
 /**
  * GET /api/conversations
  */
 conversations.get('/', async (c) => {
   const supabase = c.get('supabase');
+  const deps = createConversationDeps(supabase);
 
-  const listThreads = new ListConversationThreadsService(
-    new ConversationThreadRepository(supabase),
-  );
-  const items = await listThreads.execute();
+  const items = await deps.listConversationThreadsService.execute();
 
-  return c.json(
-    items.map((thread) => ({
-      id: thread.id,
-      clientId: thread.clientId,
-      assignedTo: thread.assignedTo,
-      subject: thread.subject,
-      status: thread.status,
-      lastMessageAt: thread.lastMessageAt.toISOString(),
-      createdAt: thread.createdAt.toISOString(),
-      updatedAt: thread.updatedAt.toISOString(),
-    })),
-  );
+  return c.json(items.map(toConversationThreadResponse));
 });
 
 /**
@@ -62,6 +81,7 @@ conversations.get('/', async (c) => {
 conversations.post('/', async (c) => {
   // --- Block 1: Auth context (set by middleware; not from request body) ---
   const supabase = c.get('supabase');
+  const deps = createConversationDeps(supabase);
   const userId = c.get('userId');
 
   // --- Block 2: Parse JSON body; malformed JSON → 400 INVALID_JSON ---
@@ -76,39 +96,13 @@ conversations.post('/', async (c) => {
     });
   }
 
-  // --- Block 3: Required-field type guard (clientId, subject, message) ---
-  if (
-    typeof body !== 'object' ||
-    body === null ||
-    typeof (body as { clientId?: unknown }).clientId !== 'string' ||
-    typeof (body as { subject?: unknown }).subject !== 'string' ||
-    typeof (body as { message?: unknown }).message !== 'string'
-  ) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'clientId, subject, and message are required',
-    });
-  }
-
-  // --- Block 4: Normalize (trim) and reject empty strings ---
-  const raw = body as { clientId: string; subject: string; message: string };
-  const input: CreateConversationInput = {
-    clientId: raw.clientId.trim(),
-    subject: raw.subject.trim(),
-    message: raw.message.trim(),
-  };
-
-  if (!input.clientId || !input.subject || !input.message) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'clientId, subject, and message are required',
-    });
-  }
+  const input: CreateConversationInput = parseBodyOrThrow(
+    createConversationBodySchema,
+    body,
+  );
 
   // --- Block 5: Resolve senderType from profile role (client vs team) ---
-  const profile = await new GetMeService(new ProfileRepository(supabase)).execute(userId);
+  const profile = await deps.getMeService.execute(userId);
   if (!profile) {
     throw new ApiError({
       code: 'NOT_FOUND_PROFILE',
@@ -121,26 +115,10 @@ conversations.post('/', async (c) => {
     profile.role === AppRole.Client ? MessageSenderType.Client : MessageSenderType.Team;
 
   // --- Block 6: Api → Application → Infrastructure (thread + first message) ---
-  const createConversation = new CreateConversationService(
-    new ConversationThreadRepository(supabase),
-    new ConversationMessageRepository(supabase),
-  );
-  const thread = await createConversation.execute(input, userId, senderType);
+  const thread = await deps.createConversationService.execute(input, userId, senderType);
 
   // --- Block 7: Map domain thread → API JSON; 201 Created ---
-  return c.json(
-    {
-      id: thread.id,
-      clientId: thread.clientId,
-      assignedTo: thread.assignedTo,
-      subject: thread.subject,
-      status: thread.status,
-      lastMessageAt: thread.lastMessageAt.toISOString(),
-      createdAt: thread.createdAt.toISOString(),
-      updatedAt: thread.updatedAt.toISOString(),
-    },
-    HttpStatus.Created,
-  );
+  return c.json(toConversationThreadResponse(thread), HttpStatus.Created);
 });
 
 /**
@@ -149,6 +127,7 @@ conversations.post('/', async (c) => {
 conversations.post('/:threadId/messages', async (c) => {
   // --- Block 1: Auth context + thread id from URL ---
   const supabase = c.get('supabase');
+  const deps = createConversationDeps(supabase);
   const userId = c.get('userId');
   const threadId = c.req.param('threadId');
 
@@ -164,36 +143,13 @@ conversations.post('/:threadId/messages', async (c) => {
     });
   }
 
-  // --- Block 3: Required-field type guard (message) ---
-  if (
-    typeof body !== 'object' ||
-    body === null ||
-    typeof (body as { message?: unknown }).message !== 'string'
-  ) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'message is required',
-    });
-  }
-
-  // --- Block 4: Normalize (trim) and reject empty message ---
-  const input: SendMessageInput = {
-    message: (body as { message: string }).message.trim(),
-  };
-
-  if (!input.message) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'message is required',
-    });
-  }
+  const input: SendMessageInput = parseBodyOrThrow(
+    sendConversationMessageBodySchema,
+    body,
+  );
 
   // --- Block 5: Thread must exist and be visible (RLS via getById) ---
-  const thread = await new GetConversationThreadByIdService(
-    new ConversationThreadRepository(supabase),
-  ).execute(threadId);
+  const thread = await deps.getConversationThreadByIdService.execute(threadId);
 
   if (!thread) {
     throw new ApiError({
@@ -204,7 +160,7 @@ conversations.post('/:threadId/messages', async (c) => {
   }
 
   // --- Block 6: Resolve senderType from profile role (client vs team) ---
-  const profile = await new GetMeService(new ProfileRepository(supabase)).execute(userId);
+  const profile = await deps.getMeService.execute(userId);
   if (!profile) {
     throw new ApiError({
       code: 'NOT_FOUND_PROFILE',
@@ -217,25 +173,10 @@ conversations.post('/:threadId/messages', async (c) => {
     profile.role === AppRole.Client ? MessageSenderType.Client : MessageSenderType.Team;
 
   // --- Block 7: Api → Application → Infrastructure (new message on thread) ---
-  const message = await new SendMessageService(new ConversationMessageRepository(supabase)).execute(
-    threadId,
-    input,
-    userId,
-    senderType,
-  );
+  const message = await deps.sendMessageService.execute(threadId, input, userId, senderType);
 
   // --- Block 8: Map domain message → API JSON; 201 Created ---
-  return c.json(
-    {
-      id: message.id,
-      threadId: message.threadId,
-      senderId: message.senderId,
-      senderType: message.senderType,
-      body: message.body,
-      createdAt: message.createdAt.toISOString(),
-    },
-    HttpStatus.Created,
-  );
+  return c.json(toConversationMessageResponse(message), HttpStatus.Created);
 });
 
 /**
@@ -244,10 +185,9 @@ conversations.post('/:threadId/messages', async (c) => {
 conversations.get('/:threadId/messages', async (c) => {
   const threadId = c.req.param('threadId');
   const supabase = c.get('supabase');
+  const deps = createConversationDeps(supabase);
 
-  const thread = await new GetConversationThreadByIdService(
-    new ConversationThreadRepository(supabase),
-  ).execute(threadId);
+  const thread = await deps.getConversationThreadByIdService.execute(threadId);
 
   if (!thread) {
     throw new ApiError({
@@ -257,20 +197,9 @@ conversations.get('/:threadId/messages', async (c) => {
     });
   }
 
-  const items = await new ListConversationMessagesService(
-    new ConversationMessageRepository(supabase),
-  ).execute(threadId);
+  const items = await deps.listConversationMessagesService.execute(threadId);
 
-  return c.json(
-    items.map((message) => ({
-      id: message.id,
-      threadId: message.threadId,
-      senderId: message.senderId,
-      senderType: message.senderType,
-      body: message.body,
-      createdAt: message.createdAt.toISOString(),
-    })),
-  );
+  return c.json(items.map(toConversationMessageResponse));
 });
 
 /**
@@ -278,6 +207,7 @@ conversations.get('/:threadId/messages', async (c) => {
  */
 conversations.patch('/:threadId/assign', async (c) => {
   const supabase = c.get('supabase');
+  const deps = createConversationDeps(supabase);
   const userId = c.get('userId');
   const threadId = c.req.param('threadId');
 
@@ -292,31 +222,12 @@ conversations.patch('/:threadId/assign', async (c) => {
     });
   }
 
-  if (
-    typeof body !== 'object' ||
-    body === null ||
-    typeof (body as { assignedTo?: unknown }).assignedTo !== 'string'
-  ) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'assignedTo is required',
-    });
-  }
+  const input: AssignConversationInput = parseBodyOrThrow(
+    assignConversationBodySchema,
+    body,
+  );
 
-  const input: AssignConversationInput = {
-    assignedTo: (body as { assignedTo: string }).assignedTo.trim(),
-  };
-
-  if (!input.assignedTo) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'assignedTo is required',
-    });
-  }
-
-  const profile = await new GetMeService(new ProfileRepository(supabase)).execute(userId);
+  const profile = await deps.getMeService.execute(userId);
   if (!profile) {
     throw new ApiError({
       code: 'NOT_FOUND_PROFILE',
@@ -326,21 +237,9 @@ conversations.patch('/:threadId/assign', async (c) => {
   }
 
   try {
-    const thread = await new AssignConversationService(
-      new ConversationThreadRepository(supabase),
-      new ProfileRepository(supabase),
-    ).execute(threadId, input, profile);
+    const thread = await deps.assignConversationService.execute(threadId, input, profile);
 
-    return c.json({
-      id: thread.id,
-      clientId: thread.clientId,
-      assignedTo: thread.assignedTo,
-      subject: thread.subject,
-      status: thread.status,
-      lastMessageAt: thread.lastMessageAt.toISOString(),
-      createdAt: thread.createdAt.toISOString(),
-      updatedAt: thread.updatedAt.toISOString(),
-    });
+    return c.json(toConversationThreadResponse(thread));
   } catch (err) {
     if (err instanceof AssignConversationError) {
       throw mapAssignConversationError(err);
@@ -354,6 +253,7 @@ conversations.patch('/:threadId/assign', async (c) => {
  */
 conversations.patch('/:threadId/status', async (c) => {
   const supabase = c.get('supabase');
+  const deps = createConversationDeps(supabase);
   const userId = c.get('userId');
   const threadId = c.req.param('threadId');
 
@@ -368,31 +268,12 @@ conversations.patch('/:threadId/status', async (c) => {
     });
   }
 
-  if (
-    typeof body !== 'object' ||
-    body === null ||
-    typeof (body as { status?: unknown }).status !== 'string'
-  ) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'status is required',
-    });
-  }
+  const input: UpdateConversationStatusInput = parseBodyOrThrow(
+    updateConversationStatusBodySchema,
+    body,
+  ) as UpdateConversationStatusInput;
 
-  const input: UpdateConversationStatusInput = {
-    status: (body as { status: string }).status.trim() as UpdateConversationStatusInput['status'],
-  };
-
-  if (!input.status) {
-    throw new ApiError({
-      code: 'VALIDATION_FAILED',
-      status: HttpStatus.BadRequest,
-      message: 'status is required',
-    });
-  }
-
-  const profile = await new GetMeService(new ProfileRepository(supabase)).execute(userId);
+  const profile = await deps.getMeService.execute(userId);
   if (!profile) {
     throw new ApiError({
       code: 'NOT_FOUND_PROFILE',
@@ -402,20 +283,9 @@ conversations.patch('/:threadId/status', async (c) => {
   }
 
   try {
-    const thread = await new UpdateConversationStatusService(
-      new ConversationThreadRepository(supabase),
-    ).execute(threadId, input, profile);
+    const thread = await deps.updateConversationStatusService.execute(threadId, input, profile);
 
-    return c.json({
-      id: thread.id,
-      clientId: thread.clientId,
-      assignedTo: thread.assignedTo,
-      subject: thread.subject,
-      status: thread.status,
-      lastMessageAt: thread.lastMessageAt.toISOString(),
-      createdAt: thread.createdAt.toISOString(),
-      updatedAt: thread.updatedAt.toISOString(),
-    });
+    return c.json(toConversationThreadResponse(thread));
   } catch (err) {
     if (err instanceof UpdateConversationStatusError) {
       throw mapUpdateConversationStatusError(err);
@@ -430,11 +300,9 @@ conversations.patch('/:threadId/status', async (c) => {
 conversations.get('/:threadId', async (c) => {
   const threadId = c.req.param('threadId');
   const supabase = c.get('supabase');
+  const deps = createConversationDeps(supabase);
 
-  const getThreadById = new GetConversationThreadByIdService(
-    new ConversationThreadRepository(supabase),
-  );
-  const thread = await getThreadById.execute(threadId);
+  const thread = await deps.getConversationThreadByIdService.execute(threadId);
 
   if (!thread) {
     throw new ApiError({
@@ -444,16 +312,7 @@ conversations.get('/:threadId', async (c) => {
     });
   }
 
-  return c.json({
-    id: thread.id,
-    clientId: thread.clientId,
-    assignedTo: thread.assignedTo,
-    subject: thread.subject,
-    status: thread.status,
-    lastMessageAt: thread.lastMessageAt.toISOString(),
-    createdAt: thread.createdAt.toISOString(),
-    updatedAt: thread.updatedAt.toISOString(),
-  });
+  return c.json(toConversationThreadResponse(thread));
 });
 
 export { conversations };
