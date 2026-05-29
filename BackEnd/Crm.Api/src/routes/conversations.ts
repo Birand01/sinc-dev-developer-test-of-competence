@@ -34,7 +34,8 @@ import {
   sendConversationMessageBodySchema,
   updateConversationStatusBodySchema,
 } from '../validation/conversationsSchemas';
-import { parseBodyOrThrow } from '../validation/parseHelpers';
+import { threadIdParamSchema } from '../validation/pathSchemas';
+import { parseBodyOrThrow, parseParamsOrThrow } from '../validation/parseHelpers';
 
 /**
  * Conversation routes under /api/conversations (see app.ts mount).
@@ -129,7 +130,9 @@ conversations.post('/:threadId/messages', async (c) => {
   const supabase = c.get('supabase');
   const deps = createConversationDeps(supabase);
   const userId = c.get('userId');
-  const threadId = c.req.param('threadId');
+  const { threadId } = parseParamsOrThrow(threadIdParamSchema, {
+    threadId: c.req.param('threadId'),
+  });
 
   // --- Block 2: Parse JSON body; malformed JSON → 400 INVALID_JSON ---
   let body: unknown;
@@ -183,7 +186,9 @@ conversations.post('/:threadId/messages', async (c) => {
  * GET /api/conversations/:threadId/messages
  */
 conversations.get('/:threadId/messages', async (c) => {
-  const threadId = c.req.param('threadId');
+  const { threadId } = parseParamsOrThrow(threadIdParamSchema, {
+    threadId: c.req.param('threadId'),
+  });
   const supabase = c.get('supabase');
   const deps = createConversationDeps(supabase);
 
@@ -209,7 +214,9 @@ conversations.patch('/:threadId/assign', async (c) => {
   const supabase = c.get('supabase');
   const deps = createConversationDeps(supabase);
   const userId = c.get('userId');
-  const threadId = c.req.param('threadId');
+  const { threadId } = parseParamsOrThrow(threadIdParamSchema, {
+    threadId: c.req.param('threadId'),
+  });
 
   let body: unknown;
   try {
@@ -255,7 +262,9 @@ conversations.patch('/:threadId/status', async (c) => {
   const supabase = c.get('supabase');
   const deps = createConversationDeps(supabase);
   const userId = c.get('userId');
-  const threadId = c.req.param('threadId');
+  const { threadId } = parseParamsOrThrow(threadIdParamSchema, {
+    threadId: c.req.param('threadId'),
+  });
 
   let body: unknown;
   try {
@@ -298,7 +307,9 @@ conversations.patch('/:threadId/status', async (c) => {
  * GET /api/conversations/:threadId
  */
 conversations.get('/:threadId', async (c) => {
-  const threadId = c.req.param('threadId');
+  const { threadId } = parseParamsOrThrow(threadIdParamSchema, {
+    threadId: c.req.param('threadId'),
+  });
   const supabase = c.get('supabase');
   const deps = createConversationDeps(supabase);
 

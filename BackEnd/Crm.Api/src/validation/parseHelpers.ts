@@ -36,3 +36,24 @@ export function parseQueryOrThrow<TSchema extends z.ZodTypeAny>(
 ): z.infer<TSchema> {
   return parseOrThrow(schema, query, message);
 }
+
+/**
+ * Parse and validate URL path params using a Zod schema (e.g. pathSchemas.ts).
+ *
+ * Flow in routes:
+ *   c.req.param('clientId') → build { clientId: "..." } → parseParamsOrThrow(schema, params)
+ *   → invalid UUID/format: 400 (never hits service)
+ *   → valid UUID: returned field is safe to pass to service (404 only if record missing)
+ *
+ * Memory hook:
+ *   pathSchemas          = URL id rules
+ *   parseParamsOrThrow   = apply rules; broken input → 400
+ *   Service              = business logic after validation (404/403 here)
+ */
+export function parseParamsOrThrow<TSchema extends z.ZodTypeAny>(
+  schema: TSchema,
+  params: unknown,
+  message = 'Invalid path parameters',
+): z.infer<TSchema> {
+  return parseOrThrow(schema, params, message);
+}

@@ -45,7 +45,8 @@ import {
   updateDealOwnerBodySchema,
   updateDealStageBodySchema,
 } from '../validation/dealsSchemas';
-import { parseBodyOrThrow, parseQueryOrThrow } from '../validation/parseHelpers';
+import { dealIdParamSchema } from '../validation/pathSchemas';
+import { parseBodyOrThrow, parseParamsOrThrow, parseQueryOrThrow } from '../validation/parseHelpers';
 
 const deals = new Hono<Env>();
 
@@ -112,7 +113,9 @@ deals.get('/', async (c) => {
  * GET /api/deals/:dealId
  */
 deals.get('/:dealId', async (c) => {
-  const dealId = c.req.param('dealId');
+  const { dealId } = parseParamsOrThrow(dealIdParamSchema, {
+    dealId: c.req.param('dealId'),
+  });
   const supabase = c.get('supabase');
   const deps = createDealDeps(supabase);
 
@@ -178,7 +181,9 @@ deals.patch('/:dealId/stage', async (c) => {
   const supabase = c.get('supabase');
   const deps = createDealDeps(supabase);
   const userId = c.get('userId');
-  const dealId = c.req.param('dealId');
+  const { dealId } = parseParamsOrThrow(dealIdParamSchema, {
+    dealId: c.req.param('dealId'),
+  });
 
   let rawBody: unknown;
   try {
@@ -223,7 +228,9 @@ deals.patch('/:dealId/owner', async (c) => {
   const supabase = c.get('supabase');
   const deps = createDealDeps(supabase);
   const userId = c.get('userId');
-  const dealId = c.req.param('dealId');
+  const { dealId } = parseParamsOrThrow(dealIdParamSchema, {
+    dealId: c.req.param('dealId'),
+  });
 
   let rawBody: unknown;
   try {
@@ -268,7 +275,9 @@ deals.post('/:dealId/notes', async (c) => {
   const supabase = c.get('supabase');
   const deps = createDealDeps(supabase);
   const userId = c.get('userId');
-  const dealId = c.req.param('dealId');
+  const { dealId } = parseParamsOrThrow(dealIdParamSchema, {
+    dealId: c.req.param('dealId'),
+  });
 
   let rawBody: unknown;
   try {

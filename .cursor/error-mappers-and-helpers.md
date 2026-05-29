@@ -41,16 +41,20 @@ This note explains where API error semantics and shared helper logic live, and w
 ## 2) Validation helpers (`BackEnd/Crm.Api/src/validation`)
 
 - `parseHelpers.ts`
-  - `parseBodyOrThrow(schema, body)` and `parseQueryOrThrow(schema, query)`.
+  - `parseBodyOrThrow(schema, body)`, `parseQueryOrThrow(schema, query)`, and `parseParamsOrThrow(schema, params)`.
   - Converts Zod validation failures into `ApiError` with:
     - `code: VALIDATION_FAILED`
     - `status: 400`
     - `details.issues` from Zod.
   - This is the main boundary between malformed input and business errors.
 
-- `dealsSchemas.ts` / `conversationsSchemas.ts`
+- `dealsSchemas.ts` / `conversationsSchemas.ts` / `clientsSchemas.ts`
   - Zod schemas for endpoint request body/query contracts.
   - Example: `updateDealOwnerBodySchema.ownerId` uses UUID validation so malformed UUIDs fail as `400` before repository access.
+
+- `pathSchemas.ts`
+  - Zod schemas for URL path params (`clientId`, `dealId`, `threadId`).
+  - Invalid path UUIDs return `400 VALIDATION_FAILED` instead of being treated as `404 Not Found`.
 
 ## 3) Infrastructure repository helpers (`BackEnd/Crm.Infrastructure/src/helpers`)
 

@@ -2,7 +2,7 @@
 
 This document describes **every HTTP endpoint that is actually registered and working** in `Crm.Api` today (`app.ts`). It uses **one continuous story** with real seed IDs and the flows we tested in PowerShell.
 
-**Not implemented yet (files exist but not mounted):** `/api/deals/*`, `/api/dashboard/*`, standalone `/api/messages/*`.
+**Messages:** There is no standalone `/api/messages` router — chat lives under `/api/conversations/:threadId/messages`.
 
 ---
 
@@ -14,7 +14,7 @@ This document describes **every HTTP endpoint that is actually registered and wo
 | GET | `/api/me` | Yes | Current user profile + role |
 | GET | `/api/clients` | Yes | List clients (optional `?q=&ownerId=`) |
 | POST | `/api/clients` | Yes | Create a new lead/client record |
-| GET | `/api/clients/:clientId` | Yes | Client detail |
+| GET | `/api/clients/:clientId` | Yes | Rich client detail (client + conversations + deals + recent activity) |
 | GET | `/api/conversations` | Yes | List conversation threads (inbox) |
 | POST | `/api/conversations` | Yes | New thread + first message |
 | GET | `/api/conversations/:threadId` | Yes | Thread detail |
@@ -22,6 +22,13 @@ This document describes **every HTTP endpoint that is actually registered and wo
 | POST | `/api/conversations/:threadId/messages` | Yes | Send a message on existing thread |
 | PATCH | `/api/conversations/:threadId/assign` | Yes | Assign thread to a sales rep |
 | PATCH | `/api/conversations/:threadId/status` | Yes | Update thread status (open/pending/closed) |
+| GET | `/api/deals` | Yes | List deals (optional `?stage=&ownerId=&clientId=&q=`) |
+| POST | `/api/deals` | Yes | Create a deal on a client |
+| GET | `/api/deals/:dealId` | Yes | Rich deal detail (deal + client summary + notes + stage history) |
+| PATCH | `/api/deals/:dealId/stage` | Yes | Move pipeline stage (writes `deal_stage_history` when stage changes) |
+| PATCH | `/api/deals/:dealId/owner` | Yes | Reassign deal owner (manager only) |
+| POST | `/api/deals/:dealId/notes` | Yes | Add an internal deal note |
+| GET | `/api/dashboard` | Yes | Manager/sales KPIs + recent activity feed (`403` for client role) |
 
 All `/api/*` routes require: `Authorization: Bearer <Supabase JWT>`.
 
@@ -31,6 +38,7 @@ All `/api/*` routes require: `Authorization: Bearer <Supabase JWT>`.
 
 | Role | Login | User / profile ID |
 |------|--------|-------------------|
+| Manager | `manager@studentcrm.test` | `3a9e21e7-1aec-49ee-bd92-959bba2fdff6` |
 | Sales | `sales@studentcrm.test` | `8326ef2b-11cd-4096-8c01-44974b2520d7` |
 | Client (Germany) | `client@studentcrm.test` | profile linked to client `a0000000-0000-4000-8000-000000000001` |
 | Client (UK lead) | same or separate client user | client `a0000000-0000-4000-8000-000000000002` |
@@ -45,6 +53,10 @@ All `/api/*` routes require: `Authorization: Bearer <Supabase JWT>`.
 | Germany | `b0000000-0000-4000-8000-000000000001` | Germany study visa questions | Demo Sales |
 | UK | `b0000000-0000-4000-8000-000000000002` | New lead — UK intake | `null` → claimed in test |
 
+| Deal | ID | Client | Notes |
+|------|-----|--------|--------|
+| Germany intake | `d0000000-0000-4000-8000-000000000001` | `a000...001` | Seed pipeline; stage history + notes in tests |
+
 ---
 
 ## The story: Demo Sales handles a UK lead (full API journey)
@@ -53,17 +65,22 @@ All `/api/*` routes require: `Authorization: Bearer <Supabase JWT>`.
  0. Check API is up          GET  /health
  1. Who am I?                GET  /api/me
  2. Find the UK client       GET  /api/clients?q=...
- 3. Open client record       GET  /api/clients/:clientId
+ 3. Open client record       GET  /api/clients/:clientId   (client + conversations + deals + activity)
  4. See all conversations    GET  /api/conversations
  5. Open UK thread           GET  /api/conversations/:threadId
  6. Read chat (if any)       GET  /api/conversations/:threadId/messages
  7. Claim the lead           PATCH /api/conversations/:threadId/assign
  8. Send follow-up          POST /api/conversations/:threadId/messages
  9. Close the case           PATCH /api/conversations/:threadId/status
+10. Open pipeline board      GET  /api/deals
+11. Open one deal            GET  /api/deals/:dealId
+12. Move stage / add note    PATCH .../stage, POST .../notes
+13. Manager overview         GET  /api/dashboard
 
 (Optional earlier in CRM life: register lead)
    POST /api/clients
    POST /api/conversations   (new thread + first message in one call)
+   POST /api/deals           (new opportunity on a client)
 ```
 
 ---
@@ -105,15 +122,22 @@ All `/api/*` routes require: `Authorization: Bearer <Supabase JWT>`.
 
 ## Step 3 — `GET /api/clients/:clientId`
 
-**Purpose:** **Single client profile** screen (contact details, linked `profileId` if they can log in).
+**Purpose:** **Client detail page** in one request — aggregate response (case study contract).
+
+**Returns:**
+
+- `client` — contact record (`fullName`, `email`, `profileId`, etc.)
+- `conversations` — threads for this `clientId`
+- `deals` — pipeline rows for this `clientId`
+- `recentActivity` — merged feed (messages, stage changes, notes) scoped to this client
 
 **In the story:**
 
 ```http
-GET /api/clients/a0000000-0000-4000-8000-000000000002
+GET /api/clients/a0000000-0000-4000-8000-000000000001
 ```
 
-Shows UK lead details. RLS ensures sales only sees clients they are allowed to see.
+Germany applicant: one closed conversation thread, one deal (`consultation_booked`), and a `recentActivity` timeline. RLS scopes all nested lists.
 
 **Typical errors:** `404` `NOT_FOUND_CLIENT`.
 
@@ -256,16 +280,70 @@ Germany case marked resolved. Same for UK thread **after** step 8 (claim); befor
 
 ---
 
-## How clients and conversations connect
+## Deals API (`/api/deals`)
+
+**Purpose:** Sales pipeline — opportunities linked to a `clientId`, with stage history and internal notes.
+
+| Endpoint | Who | Notes |
+|----------|-----|--------|
+| `GET /api/deals` | Staff (RLS) | Filters: `stage`, `ownerId`, `clientId`, `q` (title search) |
+| `POST /api/deals` | Sales, manager | Body: `clientId`, `title`, optional `ownerId`, `valueAmount`, `expectedIntake`, … |
+| `GET /api/deals/:dealId` | Staff (RLS) | `{ deal, client, notes, stageHistory }` |
+| `PATCH .../stage` | Sales (owned) / manager | `lost` requires `lostReason`; records `deal_stage_history` on real stage change |
+| `PATCH .../owner` | **Manager only** | `ownerId` must be a sales profile UUID (Zod validates UUID → `400` if malformed) |
+| `POST .../notes` | Sales (owned) / manager | Body: `{ "body": "..." }` |
+
+**Example (manager reassign):**
+
+```http
+PATCH /api/deals/d0000000-0000-4000-8000-000000000001/owner
+{ "ownerId": "8326ef2b-11cd-4096-8c01-44974b2520d7" }
+```
+
+**Typical errors:** `403` sales updating another rep’s deal; `400` validation (`lostReason`, invalid `ownerId` UUID); `404` deal not found.
+
+---
+
+## Dashboard API (`GET /api/dashboard`)
+
+**Purpose:** Manager/sales home screen — one aggregate JSON for KPI widgets + activity feed.
+
+**Returns:**
+
+- `conversationsByStatus` — counts per `open` / `pending` / `closed`
+- `unassignedConversationCount` — threads with no assignee
+- `dealsByStage` — pipeline funnel counts
+- `dealsByOwner` — workload per sales rep (`ownerId: null` = unassigned deals)
+- `recentActivity` — newest events across messages, stage history, and notes (RLS-scoped)
+
+**Access:** `manager` and `sales` only → `403 FORBIDDEN` for `client` role.
+
+**Example:**
+
+```http
+GET /api/dashboard
+Authorization: Bearer <manager-or-sales-jwt>
+```
+
+Counts reflect **RLS** (sales may see the same totals as manager on small seed data if all rows are unassigned or owned by that sales user).
+
+---
+
+## How clients, conversations, and deals connect
 
 ```text
-clients (a000...002 UK lead)
-    └── conversation_threads (b000...002 UK intake)
-            └── conversation_messages (chat lines)
+clients (a000...001 Germany applicant)
+    ├── conversation_threads (b000...001 visa questions)
+    │       └── conversation_messages (chat lines)
+    └── deals (d000...001 Fall 2026 intake)
+            ├── deal_notes
+            └── deal_stage_history
 ```
 
 - **Clients API** = CRM contact records (leads/applicants).  
 - **Conversations API** = support/sales chat tied to a `clientId`.  
+- **Deals API** = pipeline opportunities on a `clientId`.  
+- **Dashboard API** = org-wide aggregates for staff (not clients).  
 - **`GET /api/me`** = who is using the app and what they’re allowed to do.
 
 ---
@@ -282,18 +360,9 @@ HTTP (Crm.Api routes)
 
 ---
 
-## Not implemented (do not call yet)
-
-| Planned area | Route file | Status |
-|--------------|------------|--------|
-| Deals pipeline | `routes/deals.ts` | Stub, not in `app.ts` |
-| Dashboard stats | `routes/dashboard.ts` | Stub, not in `app.ts` |
-| Standalone messages | `routes/messages.ts` | Stub; messages live under `/conversations/.../messages` |
-
----
-
 ## Related docs
 
 - [conversation-endpoints-guide.md](./conversation-endpoints-guide.md) — conversations-only deep dive  
 - [conversation-post-rls-debug.md](./conversation-post-rls-debug.md) — RLS note for `POST /conversations`  
 - [profile-read-flow.md](./profile-read-flow.md) — `GET /api/me` sequence diagram  
+- [error-mappers-and-helpers.md](./error-mappers-and-helpers.md) — validation, `ApiError`, and mapper patterns  
