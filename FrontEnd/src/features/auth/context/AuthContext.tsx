@@ -15,7 +15,7 @@ import { getSupabase } from '@/lib/supabase'
  * App-wide Supabase Auth state (session present or not).
  *
  * Does NOT load CRM profile fields (fullName, role). Those live in `profiles`
- * and are returned by the Worker via GET /api/me — wired in a later step.
+ * and are returned by the Worker via GET /api/me — see hooks/useMe.
  */
 export type AuthContextValue = {
   /** Supabase session (access_token, refresh_token, expiry). Null when signed out. */

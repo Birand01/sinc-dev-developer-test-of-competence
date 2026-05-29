@@ -5,6 +5,7 @@
  * Protected (auth required): GET /api/me, GET /api/clients/:clientId, …
  */
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { ApiError } from './errors/ApiError';
 import { HttpStatus } from './http/HttpStatus';
 import { auth } from './middleware/auth';
@@ -16,6 +17,17 @@ import { users } from './routes/users';
 import type { Env } from './types/env';
 
 const app = new Hono<Env>();
+
+// Browser SPA (Vite) calls Worker on a different origin — allow preflight + Bearer header.
+app.use(
+  '*',
+  cors({
+    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    allowHeaders: ['Authorization', 'Content-Type'],
+    allowMethods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    maxAge: 86_400,
+  }),
+);
 
 // Central error handling: keep routes free of repeated status/JSON boilerplate.
 app.onError((err, c) => {

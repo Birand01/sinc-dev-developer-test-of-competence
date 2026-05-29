@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { queryClient } from '@/app/queryClient'
-import { AuthProvider } from '@/features/auth/AuthContext'
+import { AuthProvider } from '@/features/auth/context/AuthContext'
 import App from '@/App.tsx'
 import './index.css'
 

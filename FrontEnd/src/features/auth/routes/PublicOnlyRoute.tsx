@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 
-import { useAuth } from '@/features/auth/AuthContext'
-import { AUTHENTICATED_HOME } from '@/features/auth/constants'
+import { useAuth } from '@/features/auth/context/AuthContext'
+import { AUTHENTICATED_HOME } from '@/features/auth/lib/constants'
 
 type PublicOnlyRouteProps = {
   children: ReactNode
