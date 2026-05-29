@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/form/button'
 import { Input } from '@/components/ui/form/input'
 import { Label } from '@/components/ui/form/label'
+import { AUTHENTICATED_HOME } from '@/features/auth/constants'
 import { getSupabase } from '@/lib/supabase'
 
 /** Email/password sign-in for the home page auth panel. */
@@ -31,7 +32,7 @@ export function LoginForm() {
       return
     }
 
-    navigate('/', { replace: true })
+    navigate(AUTHENTICATED_HOME, { replace: true })
   }
 
   return (
