@@ -11,7 +11,7 @@ import { DashboardActivityRepository } from '../../../Crm.Infrastructure/src/rep
 import { DealRepository } from '../../../Crm.Infrastructure/src/repositories/DealRepository';
 import { ApiError } from '../errors/ApiError';
 import { HttpStatus } from '../http/HttpStatus';
-import { toClientDetailResponse, toClientResponse } from '../mappers/clientResponseMapper';
+import { toClientDetailResponse, toClientListItemResponse, toClientResponse } from '../mappers/clientResponseMapper';
 import type { Env } from '../types/env';
 import { createClientBodySchema } from '../validation/clientsSchemas';
 import { clientIdParamSchema } from '../validation/pathSchemas';
@@ -30,7 +30,7 @@ function createClientDeps(supabase: Env['Variables']['supabase']) {
   const dashboardActivityRepository = new DashboardActivityRepository(supabase);
 
   return {
-    listClientsService: new ListClientsService(clientRepository),
+    listClientsService: new ListClientsService(clientRepository, dealRepository),
     createClientService: new CreateClientService(clientRepository),
     getClientDetailService: new GetClientDetailService(
       clientRepository,
@@ -61,7 +61,7 @@ clients.get('/', async (c) => {
 
   const items = await deps.listClientsService.execute(filters);
 
-  return c.json(items.map(toClientResponse));
+  return c.json(items.map(toClientListItemResponse));
 });
 
 /**

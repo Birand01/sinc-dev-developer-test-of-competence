@@ -1,4 +1,5 @@
 import type { ClientDetail } from '../../../Crm.Application/src/dto/clients/ClientDetail';
+import type { ClientListItem } from '../../../Crm.Application/src/dto/clients/ClientListItem';
 import type { Client } from '../../../Crm.Domain/entities/Client';
 import { toConversationThreadResponse } from './conversationResponseMapper';
 import { toDealResponse } from './dealResponseMapper';
@@ -16,6 +17,14 @@ export function toClientResponse(client: Client) {
     createdBy: client.createdBy,
     createdAt: client.createdAt.toISOString(),
     updatedAt: client.updatedAt.toISOString(),
+  };
+}
+
+/** API response mapper for GET /api/clients list rows. */
+export function toClientListItemResponse(item: ClientListItem) {
+  return {
+    ...toClientResponse(item.client),
+    activeDealTitle: item.activeDealTitle,
   };
 }
 

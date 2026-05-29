@@ -204,4 +204,37 @@ export class DealRepository implements IDealRepository {
       }))
       .sort((a, b) => b.count - a.count);
   }
+
+  /**
+   * Newest non-terminal deal title per client (for GET /api/clients list).
+   * Won/lost deals are excluded; first row per client_id after updated_at desc wins.
+   */
+  async getActiveDealTitleByClientIds(clientIds: string[]): Promise<Map<string, string>> {
+    if (clientIds.length === 0) {
+      return new Map();
+    }
+
+    const activeStages = (Object.values(DealStage) as DealStageType[]).filter(
+      (stage) => stage !== DealStage.Won && stage !== DealStage.Lost,
+    );
+
+    const { data, error } = await this.supabase
+      .from('deals')
+      .select('client_id, title, updated_at')
+      .in('client_id', clientIds)
+      .in('stage', activeStages)
+      .order('updated_at', { ascending: false });
+
+    throwIfSupabaseError(error, 'Failed to load active deals for client list');
+
+    const titleByClientId = new Map<string, string>();
+    for (const row of data ?? []) {
+      const clientId = row.client_id as string;
+      if (!titleByClientId.has(clientId)) {
+        titleByClientId.set(clientId, row.title as string);
+      }
+    }
+
+    return titleByClientId;
+  }
 }

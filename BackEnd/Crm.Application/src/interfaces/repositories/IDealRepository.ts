@@ -36,4 +36,9 @@ export interface IDealRepository {
   countByStage(): Promise<DealStageCount[]>;
   /** Dashboard aggregate: deal counts per owner (RLS-scoped). */
   countByOwner(): Promise<DealOwnerCount[]>;
+  /**
+   * For client list: newest active deal title per client (non-won/lost).
+   * Missing client id = no active deal.
+   */
+  getActiveDealTitleByClientIds(clientIds: string[]): Promise<Map<string, string>>;
 }
