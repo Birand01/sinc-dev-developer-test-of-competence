@@ -168,9 +168,10 @@ backend/
 ## Frontend (Later Phase)
 
 - Stack: Vite, React, TypeScript, React Router, TanStack Query, shadcn/ui, Tailwind.
-- Lives under `frontend/`; starts only after backend is complete and tested.
+- Lives under `FrontEnd/`; starts only after backend is complete and tested.
 - UI calls Worker API; Supabase Realtime for chat/pipeline updates.
 - Role-aware navigation and loading/empty/error states.
+- **UI wireframes & shadcn screen rules:** [frontend-ui-wireframes.md](./frontend-ui-wireframes.md)
 
 ---
 
