@@ -5,6 +5,7 @@ node_modules/
 
 # Build outputs
 dist/
+dist-ssr/
 build/
 out/
 .next/
@@ -47,6 +48,11 @@ coverage/
 *.swp
 *.swo
 *~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # OS files
 .DS_Store
