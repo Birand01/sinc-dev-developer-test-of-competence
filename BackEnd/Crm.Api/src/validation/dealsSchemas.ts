@@ -11,10 +11,13 @@ import {
 export const createDealBodySchema = z.object({
   clientId: requiredTrimmedUuid,
   title: requiredTrimmedString,
-  ownerId: nullableTrimmedUuid,
-  expectedIntake: nullableTrimmedString,
-  valueAmount: z.union([z.number(), z.null(), z.undefined()]).transform((v) => v ?? null),
-  valueCurrency: nullableTrimmedString,
+  ownerId: nullableTrimmedUuid.optional().default(null),
+  expectedIntake: nullableTrimmedString.optional().default(null),
+  valueAmount: z
+    .union([z.number(), z.null()])
+    .optional()
+    .default(null),
+  valueCurrency: nullableTrimmedString.optional().default(null),
 });
 
 /** Query schema for GET /api/deals. */
@@ -30,7 +33,7 @@ export const listDealsQuerySchema = z.object({
 /** Body schema for PATCH /api/deals/:dealId/stage. */
 export const updateDealStageBodySchema = z.object({
   stage: z.enum(Object.values(DealStage) as [string, ...string[]]),
-  lostReason: nullableTrimmedString,
+  lostReason: nullableTrimmedString.optional().default(null),
 });
 
 /** Body schema for PATCH /api/deals/:dealId/owner. */
