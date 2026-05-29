@@ -48,9 +48,13 @@ This note explains where API error semantics and shared helper logic live, and w
     - `details.issues` from Zod.
   - This is the main boundary between malformed input and business errors.
 
+- `commonSchemas.ts`
+  - Shared Zod helpers (`requiredTrimmedUuid`, `nullableTrimmedUuid`, trim helpers).
+  - Body/query UUID fields use these so malformed IDs return `400` before repository access.
+
 - `dealsSchemas.ts` / `conversationsSchemas.ts` / `clientsSchemas.ts`
   - Zod schemas for endpoint request body/query contracts.
-  - Example: `updateDealOwnerBodySchema.ownerId` uses UUID validation so malformed UUIDs fail as `400` before repository access.
+  - Example: `createDealBodySchema.clientId`, `createConversationBodySchema.clientId`, `assignConversationBodySchema.assignedTo`.
 
 - `pathSchemas.ts`
   - Zod schemas for URL path params (`clientId`, `dealId`, `threadId`).

@@ -1,32 +1,17 @@
 import { z } from 'zod';
 import { DealStage } from '../../../Crm.Domain/enums/DealStage';
-
-const nullableTrimmedString = z
-  .union([z.string(), z.null(), z.undefined()])
-  .transform((value) => {
-    if (value == null) return null;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  });
-
-const nullableTrimmedUuid = z
-  .union([z.string(), z.null(), z.undefined()])
-  .transform((value) => {
-    if (value == null) return null;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  })
-  .refine((value) => value === null || z.string().uuid().safeParse(value).success, {
-    message: 'Expected a valid UUID',
-  });
-
-const requiredTrimmedString = z.string().trim().min(1);
+import {
+  nullableTrimmedString,
+  nullableTrimmedUuid,
+  requiredTrimmedString,
+  requiredTrimmedUuid,
+} from './commonSchemas';
 
 /** Body schema for POST /api/deals. */
 export const createDealBodySchema = z.object({
-  clientId: requiredTrimmedString,
+  clientId: requiredTrimmedUuid,
   title: requiredTrimmedString,
-  ownerId: nullableTrimmedString,
+  ownerId: nullableTrimmedUuid,
   expectedIntake: nullableTrimmedString,
   valueAmount: z.union([z.number(), z.null(), z.undefined()]).transform((v) => v ?? null),
   valueCurrency: nullableTrimmedString,
@@ -37,8 +22,8 @@ export const listDealsQuerySchema = z.object({
   stage: z
     .union([z.enum(Object.values(DealStage) as [string, ...string[]]), z.undefined()])
     .optional(),
-  ownerId: nullableTrimmedString.optional(),
-  clientId: nullableTrimmedString.optional(),
+  ownerId: nullableTrimmedUuid.optional(),
+  clientId: nullableTrimmedUuid.optional(),
   q: nullableTrimmedString.optional(),
 });
 

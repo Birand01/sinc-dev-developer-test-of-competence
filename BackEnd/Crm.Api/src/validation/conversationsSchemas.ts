@@ -1,11 +1,10 @@
 import { z } from 'zod';
 import { ConversationStatus } from '../../../Crm.Domain/enums/ConversationStatus';
-
-const requiredTrimmedString = z.string().trim().min(1);
+import { requiredTrimmedString, requiredTrimmedUuid } from './commonSchemas';
 
 /** Body schema for POST /api/conversations. */
 export const createConversationBodySchema = z.object({
-  clientId: requiredTrimmedString,
+  clientId: requiredTrimmedUuid,
   subject: requiredTrimmedString,
   message: requiredTrimmedString,
 });
@@ -17,7 +16,7 @@ export const sendConversationMessageBodySchema = z.object({
 
 /** Body schema for PATCH /api/conversations/:threadId/assign. */
 export const assignConversationBodySchema = z.object({
-  assignedTo: requiredTrimmedString,
+  assignedTo: requiredTrimmedUuid,
 });
 
 /** Body schema for PATCH /api/conversations/:threadId/status. */
