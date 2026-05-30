@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/form/button'
 
-/** Navigates from client detail back to the clients list. */
-export function ClientBackButton() {
+type BackLinkProps = {
+  /** React Router destination (e.g. `/clients`, `/deals`). */
+  to: string
+  /** Visible label after the arrow (e.g. `Back to clients`). */
+  label: string
+}
+
+/** Outline back navigation used on detail pages (client, deal, …). */
+export function BackLink({ to, label }: BackLinkProps) {
   return (
     <Button
       variant="outline"
@@ -12,9 +19,9 @@ export function ClientBackButton() {
       className="-ml-2 gap-1.5 font-medium text-foreground shadow-sm"
       asChild
     >
-      <Link to="/clients">
+      <Link to={to}>
         <ArrowLeft aria-hidden />
-        Back to clients
+        {label}
       </Link>
     </Button>
   )

@@ -19,12 +19,15 @@ export function useCreateDeal() {
   return useMutation({
     mutationFn: (body: CreateDealBody) => createDeal(body),
     onSuccess: (_deal, variables) => {
+      // Client detail: deals card + activity.
       queryClient.invalidateQueries({
         queryKey: clientsQueryKeys.detail(variables.clientId),
       })
+      // Clients list: activeDealTitle column.
       queryClient.invalidateQueries({
         queryKey: clientsQueryKeys.allLists,
       })
+      // Pipeline: new deal appears in kanban.
       queryClient.invalidateQueries({
         queryKey: dealsQueryKeys.allLists,
       })

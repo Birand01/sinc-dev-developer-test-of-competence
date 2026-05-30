@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 
-import { ClientBackButton } from '@/features/clients/components/ClientBackButton'
+import { BackLink } from '@/components/common/BackLink'
 import { ClientConversationsCard } from '@/features/clients/components/ClientConversationsCard'
 import { ClientDealsCard } from '@/features/clients/components/ClientDealsCard'
 import { ClientDetailActivity } from '@/features/clients/components/ClientDetailActivity'
@@ -49,7 +49,7 @@ export function ClientDetailPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <ClientBackButton />
+      <BackLink to="/clients" label="Back to clients" />
       {content}
     </div>
   )

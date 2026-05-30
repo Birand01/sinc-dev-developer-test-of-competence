@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/apiClient'
 /**
  * Create a deal for a client (POST /api/deals).
  *
+ * Sales: backend defaults ownerId to self when omitted. Manager may leave unassigned.
  * Requires JWT. 201 — created deal; 400/403/404 — validation or business rules.
  */
 export function createDeal(body: CreateDealBody): Promise<DealResponse> {

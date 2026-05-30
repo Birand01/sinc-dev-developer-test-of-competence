@@ -12,23 +12,29 @@ export type PipelineOwnerOption = {
   label: string
 }
 
+/** Sales rep pipeline owner filter values. */
+export const pipelineOwnerFilterAll = 'all'
+export const pipelineOwnerFilterMine = 'mine'
+export const pipelineOwnerFilterUnassigned = 'unassigned'
+
 type PipelineToolbarProps = {
   search: string
   onSearchChange: (value: string) => void
   ownerFilter: string
   onOwnerFilterChange: (value: string) => void
-  ownerOptions: PipelineOwnerOption[]
+  /** Sales: All / Mine / Unassigned. Manager: All + per-rep from dashboard. */
+  variant: 'sales' | 'manager'
+  managerOwnerOptions?: PipelineOwnerOption[]
 }
 
-const ALL_OWNERS = 'all'
-
-/** Pipeline filters — owner (GET ?ownerId=) and title search (?q=). */
+/** Pipeline filters — owner scope and title search (?q=). */
 export function PipelineToolbar({
   search,
   onSearchChange,
   ownerFilter,
   onOwnerFilterChange,
-  ownerOptions,
+  variant,
+  managerOwnerOptions = [],
 }: PipelineToolbarProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
@@ -48,12 +54,26 @@ export function PipelineToolbar({
             <SelectValue placeholder="All" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_OWNERS}>All</SelectItem>
-            {ownerOptions.map((owner) => (
-              <SelectItem key={owner.id} value={owner.id}>
-                {owner.label}
-              </SelectItem>
-            ))}
+            {variant === 'sales' ? (
+              // Sales: scope within RLS-visible deals (All / Mine / Unassigned).
+              <>
+                <SelectItem value={pipelineOwnerFilterAll}>All</SelectItem>
+                <SelectItem value={pipelineOwnerFilterMine}>Mine</SelectItem>
+                <SelectItem value={pipelineOwnerFilterUnassigned}>
+                  Unassigned
+                </SelectItem>
+              </>
+            ) : (
+              // Manager: filter by rep UUID (?ownerId= on GET /api/deals).
+              <>
+                <SelectItem value={pipelineOwnerFilterAll}>All</SelectItem>
+                {managerOwnerOptions.map((owner) => (
+                  <SelectItem key={owner.id} value={owner.id}>
+                    {owner.label}
+                  </SelectItem>
+                ))}
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -69,5 +89,3 @@ export function PipelineToolbar({
     </div>
   )
 }
-
-export { ALL_OWNERS as pipelineOwnerFilterAll }

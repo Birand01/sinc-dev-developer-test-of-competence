@@ -7,7 +7,7 @@ import type { DealResponse } from '@/features/deals/types'
 
 type PipelineDealCardProps = {
   deal: DealResponse
-  /** Wired on PipelinePage when deal detail route exists. */
+  /** When set, card navigates to deal detail (PipelinePage). */
   onClick?: () => void
   className?: string
 }

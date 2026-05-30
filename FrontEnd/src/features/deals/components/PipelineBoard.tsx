@@ -25,10 +25,12 @@ type PipelineBoardProps = {
 export function PipelineBoard({ deals, onDealClick }: PipelineBoardProps) {
   const dealsByStage = new Map<DealStageType, DealResponse[]>()
 
+  // Initialise empty buckets for every pipeline column.
   for (const { stage } of PIPELINE_STAGES) {
     dealsByStage.set(stage, [])
   }
 
+  // Client-side group — API returns a flat list (GET /api/deals).
   for (const deal of deals) {
     const column = dealsByStage.get(deal.stage)
     if (column) {

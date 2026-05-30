@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 
 import { ClientDetailPage } from '@/app/pages/clients/ClientDetailPage'
+import { DealDetailPage } from '@/app/pages/deals/DealDetailPage'
 import { HomePage } from '@/app/pages/home/HomePage'
 import { LoginPage } from '@/app/pages/login/LoginPage'
 import { staffRoutes } from '@/app/staffRoutes'
@@ -16,7 +17,7 @@ import { PublicOnlyRoute } from '@/features/auth/routes/PublicOnlyRoute'
  * Staff paths + pages: staffRoutes.tsx (shared with AppLayout nav).
  *
  * Nested routing: parent <Route> renders AppLayout; child routes render inside its <Outlet />.
- * /clients/:clientId is nested under /clients (not in staffRoutes — no top-level nav item).
+ * /clients/:clientId and /deals/:dealId are nested (not separate nav items).
  */
 export function AppRouter() {
   return (
@@ -52,6 +53,15 @@ export function AppRouter() {
               <Route key={path} path={path}>
                 <Route index element={<Page />} />
                 <Route path=":clientId" element={<ClientDetailPage />} />
+              </Route>
+            )
+          }
+
+          if (path === '/deals') {
+            return (
+              <Route key={path} path={path}>
+                <Route index element={<Page />} />
+                <Route path=":dealId" element={<DealDetailPage />} />
               </Route>
             )
           }

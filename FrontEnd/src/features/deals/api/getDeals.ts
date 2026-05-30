@@ -9,6 +9,7 @@ import { apiFetch } from '@/lib/apiClient'
  */
 export function getDeals(params: ListDealsParams = {}): Promise<DealsListResponse> {
   const search = new URLSearchParams()
+  // RLS scopes visible deals; filters narrow the list further.
   if (params.stage) search.set('stage', params.stage)
   if (params.ownerId?.trim()) search.set('ownerId', params.ownerId.trim())
   if (params.clientId?.trim()) search.set('clientId', params.clientId.trim())

@@ -20,11 +20,13 @@ export function PipelineColumn({
       className="flex w-[220px] shrink-0 flex-col rounded-lg bg-muted/30 p-3"
       aria-label={`${label} deals`}
     >
+      {/* Column header: stage label + deal count */}
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-medium">{label}</h2>
         <Badge variant="secondary">{deals.length}</Badge>
       </div>
 
+      {/* Deal cards for this stage */}
       {deals.length === 0 ? (
         <p className="text-muted-foreground text-xs">No deals</p>
       ) : (

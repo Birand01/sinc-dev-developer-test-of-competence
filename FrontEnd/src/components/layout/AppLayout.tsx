@@ -139,7 +139,7 @@ export function AppLayout() {
                 <NavLink
                   key={path}
                   to={path}
-                  end={path !== '/clients'}
+                  end={path !== '/clients' && path !== '/deals'}
                   className={({ isActive }) =>
                     cn(
                       'border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
