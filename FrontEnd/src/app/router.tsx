@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 
+import { ClientDetailPage } from '@/app/pages/clients/ClientDetailPage'
 import { HomePage } from '@/app/pages/home/HomePage'
 import { LoginPage } from '@/app/pages/login/LoginPage'
 import { staffRoutes } from '@/app/staffRoutes'
@@ -15,6 +16,7 @@ import { PublicOnlyRoute } from '@/features/auth/routes/PublicOnlyRoute'
  * Staff paths + pages: staffRoutes.tsx (shared with AppLayout nav).
  *
  * Nested routing: parent <Route> renders AppLayout; child routes render inside its <Outlet />.
+ * /clients/:clientId is nested under /clients (not in staffRoutes — no top-level nav item).
  */
 export function AppRouter() {
   return (
@@ -44,9 +46,18 @@ export function AppRouter() {
         }
       >
         {/* Child routes: matched page renders inside AppLayout's <Outlet />. */}
-        {staffRoutes.map(({ path, page: Page }) => (
-          <Route key={path} path={path} element={<Page />} />
-        ))}
+        {staffRoutes.map(({ path, page: Page }) => {
+          if (path === '/clients') {
+            return (
+              <Route key={path} path={path}>
+                <Route index element={<Page />} />
+                <Route path=":clientId" element={<ClientDetailPage />} />
+              </Route>
+            )
+          }
+
+          return <Route key={path} path={path} element={<Page />} />
+        })}
       </Route>
     </Routes>
   )

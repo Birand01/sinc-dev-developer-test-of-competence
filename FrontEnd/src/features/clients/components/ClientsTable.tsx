@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom'
+
 import {
   Table,
   TableBody,
@@ -24,6 +26,8 @@ function formatActiveDeal(title: string | null): string {
 
 /** Client list table — data from GET /api/clients; no fetching here. */
 export function ClientsTable({ items }: ClientsTableProps) {
+  const navigate = useNavigate()
+
   if (items.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">No clients match your search.</p>
@@ -42,7 +46,11 @@ export function ClientsTable({ items }: ClientsTableProps) {
       </TableHeader>
       <TableBody>
         {items.map((client) => (
-          <TableRow key={client.id}>
+          <TableRow
+            key={client.id}
+            className="cursor-pointer"
+            onClick={() => navigate(`/clients/${client.id}`)}
+          >
             <TableCell className="font-medium">{client.fullName}</TableCell>
             <TableCell>{displayValue(client.email)}</TableCell>
             <TableCell>{displayValue(client.targetCountry)}</TableCell>
