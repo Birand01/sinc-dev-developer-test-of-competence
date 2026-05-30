@@ -12,6 +12,7 @@ export function mapUpdateDealOwnerError(err: UpdateDealOwnerError): ApiError {
         message: err.message,
       });
     case 'FORBIDDEN':
+    case 'SALES_MUST_CLAIM_SELF':
       return new ApiError({
         code: 'FORBIDDEN',
         status: HttpStatus.Forbidden,

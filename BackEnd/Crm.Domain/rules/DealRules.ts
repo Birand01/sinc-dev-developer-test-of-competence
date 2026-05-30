@@ -44,6 +44,15 @@ export function canReassignDealOwner(actor: Profile): boolean {
 }
 
 /**
+ * Access: Sales can claim unassigned deals (owner_id was null).
+ * Manager reassigns via canReassignDealOwner instead of claiming.
+ */
+export function canClaimDeal(actor: Profile, deal: Deal): boolean {
+  if (isSales(actor)) return deal.ownerId === null;
+  return false;
+}
+
+/**
  * Case study: moving to lost requires a non-empty lost_reason.
  */
 export function requiresLostReason(

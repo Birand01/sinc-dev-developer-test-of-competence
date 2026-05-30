@@ -63,6 +63,7 @@ function createDealDeps(supabase: Env['Variables']['supabase']) {
     getDealDetailService: new GetDealDetailService(
       dealRepository,
       clientRepository,
+      profileRepository,
       dealNoteRepository,
       dealStageHistoryRepository,
     ),

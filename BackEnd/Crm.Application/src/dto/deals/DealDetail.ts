@@ -12,10 +12,19 @@ export interface DealClientSummary {
   targetCountry: string | null;
 }
 
+/** Compact sales rep projection for deal detail; null when deal is unassigned. */
+export interface DealOwnerSummary {
+  /** profiles.id — matches deal.ownerId when set */
+  id: string;
+  fullName: string;
+}
+
 /** Rich payload contract for GET /api/deals/:dealId. */
 export interface DealDetail {
   deal: Deal;
   client: DealClientSummary;
+  /** Resolved from profiles when deal.ownerId is set; null when unassigned. */
+  owner: DealOwnerSummary | null;
   notes: DealNote[];
   stageHistory: DealStageHistory[];
 }

@@ -11,17 +11,27 @@ import {
 } from '@/components/ui/form/select'
 import { DealStage } from '@/features/dashboard/types'
 import type { DealStage as DealStageType } from '@/features/dashboard/types'
+import { DealClaimButton } from '@/features/deals/components/DealClaimButton'
 import { DealLostReasonDialog } from '@/features/deals/components/DealLostReasonDialog'
+import { DealReassignOwnerSelect } from '@/features/deals/components/DealReassignOwnerSelect'
 import { useUpdateDealStage } from '@/features/deals/hooks/useUpdateDealStage'
-import type { DealClientSummary, DealResponse } from '@/features/deals/types'
+import type { DealClientSummary, DealOwnerSummary, DealResponse } from '@/features/deals/types'
 import { ApiError } from '@/lib/apiClient'
 
 type DealDetailHeaderProps = {
   dealId: string
   deal: DealResponse
   client: DealClientSummary
+  /** From GET /api/deals/:dealId → owner; null when unassigned. */
+  owner: DealOwnerSummary | null
   /** Manager always; sales only when deal.ownerId matches signed-in user. */
   canEditStage: boolean
+  /** Sales on unassigned deal — show claim button. */
+  canClaim: boolean
+  /** Manager — show owner reassign Select. */
+  canReassignOwner: boolean
+  /** Signed-in user id for PATCH .../owner when claiming; undefined until me loads. */
+  claimOwnerId?: string
 }
 
 // --- Display helpers (wireframe metadata row) ---
@@ -49,20 +59,31 @@ const STAGE_OPTIONS = Object.values(DealStage)
 /**
  * Deal detail header (wireframe top block).
  * Stage select → PATCH /api/deals/:dealId/stage via useUpdateDealStage.
+ * Claim → DealClaimButton (sales, unassigned only).
+ * Reassign → DealReassignOwnerSelect (manager only).
  */
 export function DealDetailHeader({
   dealId,
   deal,
   client,
+  owner,
   canEditStage,
+  canClaim,
+  canReassignOwner,
+  claimOwnerId,
 }: DealDetailHeaderProps) {
   const [lostDialogOpen, setLostDialogOpen] = useState(false)
-  const ownerLabel = deal.ownerId ? 'Assigned' : 'Unassigned'
+  const [isClaimPending, setIsClaimPending] = useState(false)
+  const [isReassignPending, setIsReassignPending] = useState(false)
+  const ownerLabel = owner?.fullName ?? 'Unassigned'
 
   const { mutate, isPending, isError, error, reset } = useUpdateDealStage({
     dealId,
   })
-  const stageSelectDisabled = !canEditStage || isPending
+
+  const showClaimAction = canClaim && Boolean(claimOwnerId)
+  const ownerMutationBusy = isClaimPending || isReassignPending
+  const stageSelectDisabled = !canEditStage || isPending || ownerMutationBusy
 
   // --- Stage change handlers ---
 
@@ -134,6 +155,15 @@ export function DealDetailHeader({
           </div>
         </div>
 
+        {showClaimAction && claimOwnerId ? (
+          <DealClaimButton
+            dealId={dealId}
+            ownerId={claimOwnerId}
+            disabled={isPending || isReassignPending}
+            onPendingChange={setIsClaimPending}
+          />
+        ) : null}
+
         {/* Client, owner, value, intake */}
         <dl className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-2 text-sm">
           <div>
@@ -150,9 +180,19 @@ export function DealDetailHeader({
           </div>
           <div>
             <dt className="sr-only">Owner</dt>
-            <dd>
-              <span className="text-foreground font-medium">Owner:</span>{' '}
-              <Badge variant="outline">{ownerLabel}</Badge>
+            <dd className="flex flex-wrap items-center gap-2">
+              <span className="text-foreground font-medium">Owner:</span>
+              {canReassignOwner ? (
+                <DealReassignOwnerSelect
+                  dealId={dealId}
+                  ownerId={deal.ownerId}
+                  ownerFullName={owner?.fullName}
+                  disabled={isPending || isClaimPending}
+                  onPendingChange={setIsReassignPending}
+                />
+              ) : (
+                <Badge variant="outline">{ownerLabel}</Badge>
+              )}
             </dd>
           </div>
           <div>

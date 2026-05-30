@@ -1,7 +1,7 @@
 import type { Deal } from '../../../../Crm.Domain/entities/Deal';
 import type { Profile } from '../../../../Crm.Domain/entities/Profile';
 import { AppRole } from '../../../../Crm.Domain/enums/AppRole';
-import { canReassignDealOwner } from '../../../../Crm.Domain/rules/DealRules';
+import { canClaimDeal, canReassignDealOwner } from '../../../../Crm.Domain/rules/DealRules';
 import { updateDealOwnerError } from '../../errors/updateDealOwnerError';
 import type { IDealRepository } from '../../interfaces/repositories/IDealRepository';
 import type { IProfileRepository } from '../../interfaces/repositories/IProfileRepository';
@@ -12,7 +12,9 @@ export interface UpdateDealOwnerInput {
 }
 
 /**
- * Use-case: reassign a deal owner with role and owner validations.
+ * Use-case: reassign or claim deal ownership with role validations.
+ * Manager: PATCH owner to any sales rep or null (unassigned pool).
+ * Sales: claim unassigned deals only (ownerId must be self).
  * Used by PATCH /api/deals/:dealId/owner; HTTP mapping stays in Crm.Api.
  */
 export class UpdateDealOwnerService {
@@ -28,7 +30,15 @@ export class UpdateDealOwnerService {
     }
 
     if (!canReassignDealOwner(actor)) {
-      throw updateDealOwnerError('FORBIDDEN');
+      if (!canClaimDeal(actor, deal)) {
+        throw updateDealOwnerError('FORBIDDEN');
+      }
+
+      if (input.ownerId !== actor.id) {
+        throw updateDealOwnerError('SALES_MUST_CLAIM_SELF');
+      }
+
+      return this.dealRepository.updateOwner(dealId, actor.id);
     }
 
     if (input.ownerId) {

@@ -26,6 +26,12 @@ export type UpdateDealStageBody = {
   lostReason?: string | null
 }
 
+/** Body for PATCH /api/deals/:dealId/owner (updateDealOwnerBodySchema). */
+export type UpdateDealOwnerBody = {
+  /** profiles.id of owning sales rep; null returns deal to unassigned pool (manager only). */
+  ownerId: string | null
+}
+
 /** Body for POST /api/deals/:dealId/notes (createDealNoteBodySchema). */
 export type CreateDealNoteBody = {
   body: string
@@ -74,6 +80,13 @@ export type DealClientSummary = {
   targetCountry: string | null
 }
 
+/** Sales rep embedded in GET /api/deals/:dealId (toDealDetailResponse.owner); null when unassigned. */
+export type DealOwnerSummary = {
+  /** profiles.id — matches deal.ownerId when set */
+  id: string
+  fullName: string
+}
+
 /** Single note from GET /api/deals/:dealId (toDealNoteResponse). */
 export type DealNoteResponse = {
   id: string
@@ -99,6 +112,8 @@ export type DealStageHistoryEntry = {
 export type DealDetailResponse = {
   deal: DealResponse
   client: DealClientSummary
+  /** Resolved owner display; null when deal.ownerId is null. */
+  owner: DealOwnerSummary | null
   notes: DealNoteResponse[]
   stageHistory: DealStageHistoryEntry[]
 }

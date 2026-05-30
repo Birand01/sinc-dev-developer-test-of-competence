@@ -1,8 +1,9 @@
-import type { DealDetail } from '../../dto/deals/DealDetail';
+import type { DealDetail, DealOwnerSummary } from '../../dto/deals/DealDetail';
 import type { IClientRepository } from '../../interfaces/repositories/IClientRepository';
 import type { IDealNoteRepository } from '../../interfaces/repositories/IDealNoteRepository';
 import type { IDealRepository } from '../../interfaces/repositories/IDealRepository';
 import type { IDealStageHistoryRepository } from '../../interfaces/repositories/IDealStageHistoryRepository';
+import type { IProfileRepository } from '../../interfaces/repositories/IProfileRepository';
 
 /**
  * Use-case: load rich deal details by id.
@@ -12,6 +13,7 @@ export class GetDealDetailService {
   constructor(
     private readonly dealRepository: IDealRepository,
     private readonly clientRepository: IClientRepository,
+    private readonly profileRepository: IProfileRepository,
     private readonly dealNoteRepository: IDealNoteRepository,
     private readonly dealStageHistoryRepository: IDealStageHistoryRepository,
   ) {}
@@ -27,10 +29,19 @@ export class GetDealDetailService {
       return null;
     }
 
-    const [notes, stageHistory] = await Promise.all([
+    const ownerProfilePromise = deal.ownerId
+      ? this.profileRepository.getById(deal.ownerId)
+      : Promise.resolve(null);
+
+    const [notes, stageHistory, ownerProfile] = await Promise.all([
       this.dealNoteRepository.listByDealId(dealId),
       this.dealStageHistoryRepository.listByDealId(dealId),
+      ownerProfilePromise,
     ]);
+
+    const owner: DealOwnerSummary | null = ownerProfile
+      ? { id: ownerProfile.id, fullName: ownerProfile.fullName }
+      : null;
 
     return {
       deal,
@@ -42,6 +53,7 @@ export class GetDealDetailService {
         country: client.country,
         targetCountry: client.targetCountry,
       },
+      owner,
       notes,
       stageHistory,
     };

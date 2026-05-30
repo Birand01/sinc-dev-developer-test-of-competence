@@ -35,6 +35,7 @@ export function toDealDetailResponse(detail: DealDetail) {
   return {
     deal: toDealResponse(detail.deal),
     client: detail.client,
+    owner: detail.owner,
     notes: detail.notes.map(toDealNoteResponse),
     stageHistory: detail.stageHistory.map((entry) => ({
       id: entry.id,

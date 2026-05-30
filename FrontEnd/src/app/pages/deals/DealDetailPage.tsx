@@ -12,6 +12,8 @@ import { ApiError } from '@/lib/apiClient'
 /**
  * Deal detail page — GET /api/deals/:dealId (deal, client, notes, stageHistory).
  * Stage edits: manager on any deal; sales on owned deals only.
+ * Claim: sales on unassigned deals only (canClaimDeal).
+ * Reassign owner: manager only (canReassignDealOwner).
  */
 export function DealDetailPage() {
   const { dealId } = useParams()
@@ -24,6 +26,16 @@ export function DealDetailPage() {
     data?.deal != null &&
     (me?.role === AppRole.Manager ||
       (me?.role === AppRole.Sales && data.deal.ownerId === me.id))
+
+  // Matches backend canClaimDeal — sales may take unassigned deals from the pool.
+  const canClaim =
+    data?.deal != null &&
+    me?.role === AppRole.Sales &&
+    data.deal.ownerId === null
+
+  // Matches backend canReassignDealOwner — manager PATCH .../owner (B-16d UI).
+  const canReassignOwner =
+    data?.deal != null && me?.role === AppRole.Manager
 
   return (
     <div className="space-y-6 p-6">
@@ -47,7 +59,11 @@ export function DealDetailPage() {
             dealId={id}
             deal={data.deal}
             client={data.client}
+            owner={data.owner}
             canEditStage={canEditStage}
+            canClaim={canClaim}
+            canReassignOwner={canReassignOwner}
+            claimOwnerId={me?.id}
           />
           <div className="grid gap-6 lg:grid-cols-2">
             <DealNotesCard

@@ -1,4 +1,4 @@
-export type { DealClientSummary, DealDetail } from '../../dto/deals/DealDetail';
+export type { DealClientSummary, DealDetail, DealOwnerSummary } from '../../dto/deals/DealDetail';
 export { CreateDealService } from './CreateDealService';
 export { CreateDealNoteService } from './CreateDealNoteService';
 export { GetDealDetailService } from './GetDealDetailService';
