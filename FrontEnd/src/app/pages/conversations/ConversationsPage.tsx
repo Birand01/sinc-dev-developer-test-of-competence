@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import { useMe } from '@/features/auth/hooks/useMe'
+import { AppRole } from '@/features/auth/types'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { ConversationQueueList } from '@/features/conversations/components/ConversationQueueList'
 import { ConversationThreadPanel } from '@/features/conversations/components/ConversationThreadPanel'
@@ -16,7 +17,7 @@ import {
 import type { ConversationThreadResponse } from '@/features/conversations/types'
 import { ApiError } from '@/lib/apiClient'
 
-/** Staff inbox — queue list, assignee filters, and thread header pane (C-3 in progress). */
+/** Staff inbox — queue, filters, thread detail, messages, reply, claim, and reassign. */
 export function ConversationsPage() {
   const [assigneeFilter, setAssigneeFilter] =
     useState<ConversationAssigneeFilter>(conversationAssigneeFilterDefault)
@@ -56,6 +57,15 @@ export function ConversationsPage() {
   const handleThreadSelect = (thread: ConversationThreadResponse) => {
     setSelectedThreadId(thread.id)
   }
+
+  // Matches backend canAssignThread — sales may claim unassigned threads only.
+  const canClaim =
+    selectedThread != null &&
+    me?.role === AppRole.Sales &&
+    selectedThread.assignedTo === null
+
+  const canReassign =
+    selectedThread != null && me?.role === AppRole.Manager
 
   return (
     <div className="space-y-6 p-6">
@@ -98,6 +108,9 @@ export function ConversationsPage() {
             isMessagesLoading={isMessagesLoading}
             isMessagesError={isMessagesError}
             messagesError={messagesError}
+            canClaim={canClaim}
+            canReassign={canReassign}
+            claimAssigneeId={me?.id}
             assigneeNameById={assigneeNameById}
           />
         </div>

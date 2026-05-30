@@ -1,8 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { ChevronDown } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 
+import { clientRoutes } from '@/app/clientRoutes'
 import { staffRoutes } from '@/app/staffRoutes'
+import { CLIENT_AUTHENTICATED_HOME } from '@/features/auth/lib/constants'
 import { Avatar, AvatarFallback } from '@/components/ui/display/avatar'
 import { Separator } from '@/components/ui/display/separator'
 import {
@@ -28,9 +30,16 @@ function profileInitials(fullName: string): string {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
 }
 
-/** Authenticated shell: top bar, staff nav, user menu, page outlet. */
+function isStaffPath(pathname: string): boolean {
+  return staffRoutes.some(
+    ({ path }) => pathname === path || pathname.startsWith(`${path}/`),
+  )
+}
+
+/** Authenticated shell: top bar, role nav, user menu, page outlet. */
 export function AppLayout() {
   const queryClient = useQueryClient()
+  const location = useLocation()
   const { signOut } = useAuth()
   const { data: me, isLoading, isError, error } = useMe()
 
@@ -71,7 +80,12 @@ export function AppLayout() {
     )
   }
 
-  const showStaffNav = me.role !== AppRole.Client
+  const isClient = me.role === AppRole.Client
+  const showStaffNav = !isClient
+
+  if (isClient && isStaffPath(location.pathname)) {
+    return <Navigate to={CLIENT_AUTHENTICATED_HOME} replace />
+  }
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -91,15 +105,17 @@ export function AppLayout() {
             </span>
           </div>
 
-          <div className="mx-auto hidden w-full max-w-md sm:block">
-            <Input
-              type="search"
-              placeholder="Search..."
-              disabled
-              aria-label="Search (coming soon)"
-              className="bg-muted/40"
-            />
-          </div>
+          {showStaffNav ? (
+            <div className="mx-auto hidden w-full max-w-md sm:block">
+              <Input
+                type="search"
+                placeholder="Search..."
+                disabled
+                aria-label="Search (coming soon)"
+                className="bg-muted/40"
+              />
+            </div>
+          ) : null}
 
           <DropdownMenu>
             <DropdownMenuTrigger className="ml-auto flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
@@ -128,46 +144,35 @@ export function AppLayout() {
           </DropdownMenu>
         </div>
 
-        {showStaffNav ? (
-          <>
-            <Separator />
-            <nav
-              className="flex gap-1 overflow-x-auto px-4 lg:px-6"
-              aria-label="Main"
-            >
-              {staffRoutes.map(({ path, label }) => (
-                <NavLink
-                  key={path}
-                  to={path}
-                  end={path !== '/clients' && path !== '/deals'}
-                  className={({ isActive }) =>
-                    cn(
-                      'border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
-                      isActive
-                        ? 'border-primary text-foreground'
-                        : 'border-transparent text-muted-foreground hover:text-foreground',
-                    )
-                  }
-                >
-                  {label}
-                </NavLink>
-              ))}
-            </nav>
-          </>
-        ) : null}
+        <>
+          <Separator />
+          <nav
+            className="flex gap-1 overflow-x-auto px-4 lg:px-6"
+            aria-label="Main"
+          >
+            {(showStaffNav ? staffRoutes : clientRoutes).map(({ path, label }) => (
+              <NavLink
+                key={path}
+                to={path}
+                end={showStaffNav ? path !== '/clients' && path !== '/deals' : true}
+                className={({ isActive }) =>
+                  cn(
+                    'border-b-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
+                    isActive
+                      ? 'border-primary text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground',
+                  )
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </>
       </header>
 
       <main className="flex-1">
-        {showStaffNav ? (
-          // React Router renders the active child <Route> here (Dashboard, Clients, …).
-          <Outlet />
-        ) : (
-          <div className="p-6">
-            <p className="text-muted-foreground text-sm">
-              Client portal routes are not wired yet.
-            </p>
-          </div>
-        )}
+        <Outlet />
       </main>
     </div>
   )

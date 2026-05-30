@@ -1,13 +1,13 @@
 import { useState } from 'react'
 
-import { ClientNewChatDialog } from '@/features/clients/components/ClientNewChatDialog'
+import { StartConversationDialog } from '@/components/common/StartConversationDialog'
 import { Button } from '@/components/ui/form/button'
 
 type ClientNewChatButtonProps = {
   clientId: string
 }
 
-/** Opens the new-chat dialog for the current client. */
+/** Staff Client detail — opens shared StartConversationDialog (variant staff). */
 export function ClientNewChatButton({ clientId }: ClientNewChatButtonProps) {
   const [open, setOpen] = useState(false)
 
@@ -21,10 +21,11 @@ export function ClientNewChatButton({ clientId }: ClientNewChatButtonProps) {
       >
         New Chat
       </Button>
-      <ClientNewChatDialog
+      <StartConversationDialog
         clientId={clientId}
         open={open}
         onOpenChange={setOpen}
+        variant="staff"
       />
     </>
   )

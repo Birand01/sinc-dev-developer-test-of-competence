@@ -29,6 +29,12 @@ export type SendConversationMessageBody = {
   message: string
 }
 
+/** Body for PATCH /api/conversations/:threadId/assign (assignConversationBodySchema). */
+export type AssignConversationBody = {
+  /** profiles.id of sales rep, or null to return thread to unassigned pool (manager only). */
+  assignedTo: string | null
+}
+
 /** JSON body for POST /api/conversations (201) — toConversationThreadResponse. */
 export type ConversationThreadResponse = {
   id: string

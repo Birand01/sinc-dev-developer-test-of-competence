@@ -2,18 +2,20 @@ import type { ConversationThread } from '../../../../Crm.Domain/entities/Convers
 import type { Profile } from '../../../../Crm.Domain/entities/Profile';
 import { AppRole } from '../../../../Crm.Domain/enums/AppRole';
 import { canAssignThread } from '../../../../Crm.Domain/rules/ConversationRules';
-import { isSales } from '../../../../Crm.Domain/rules/helpers';
+import { isManager, isSales } from '../../../../Crm.Domain/rules/helpers';
 import { assignConversationError } from '../../errors/assignConversationError';
 import type { IConversationThreadRepository } from '../../interfaces/repositories/IConversationThreadRepository';
 import type { IProfileRepository } from '../../interfaces/repositories/IProfileRepository';
 
 /** Body for PATCH /api/conversations/:threadId/assign (API contract). */
 export interface AssignConversationInput {
-  assignedTo: string;
+  assignedTo: string | null;
 }
 
 /**
  * Use-case: assign a conversation thread to a sales rep (claim or manager reassign).
+ * Manager: assign any sales rep or null (unassigned pool).
+ * Sales: claim unassigned threads only (assignedTo must be self).
  * Used by PATCH /api/conversations/:threadId/assign; HTTP mapping stays in Crm.Api.
  */
 export class AssignConversationService {
@@ -32,12 +34,33 @@ export class AssignConversationService {
       throw assignConversationError('THREAD_NOT_FOUND');
     }
 
-    if (!canAssignThread(actor, thread)) {
+    if (isSales(actor)) {
+      if (!canAssignThread(actor, thread)) {
+        throw assignConversationError('FORBIDDEN');
+      }
+
+      if (input.assignedTo !== actor.id) {
+        throw assignConversationError('SALES_MUST_CLAIM_SELF');
+      }
+
+      const assignee = await this.profileRepository.getById(actor.id);
+      if (!assignee) {
+        throw assignConversationError('ASSIGNEE_NOT_FOUND');
+      }
+
+      if (assignee.role !== AppRole.Sales) {
+        throw assignConversationError('ASSIGNEE_NOT_SALES');
+      }
+
+      return this.conversationThreadRepository.assignTo(threadId, actor.id);
+    }
+
+    if (!isManager(actor)) {
       throw assignConversationError('FORBIDDEN');
     }
 
-    if (isSales(actor) && input.assignedTo !== actor.id) {
-      throw assignConversationError('SALES_MUST_CLAIM_SELF');
+    if (input.assignedTo === null) {
+      return this.conversationThreadRepository.assignTo(threadId, null);
     }
 
     const assignee = await this.profileRepository.getById(input.assignedTo);

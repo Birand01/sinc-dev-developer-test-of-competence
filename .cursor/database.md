@@ -125,7 +125,7 @@ create index deal_notes_deal_id_created_at_idx on deal_notes(deal_id, created_at
 
 ## Access Rules
 
-- **Client** can only read their own client record, conversations, messages, and high-level deal status.
+- **Client** can only read their own client record, conversations, messages, and high-level deal status; can **insert** conversation threads where `client_id` matches their linked client row (migration `005_client_thread_insert.sql`).
 - **Sales** can read assigned conversations and deals, plus unassigned conversations.
 - **Sales** can create deals.
 - **Sales** can update only owned deals.

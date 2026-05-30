@@ -34,6 +34,15 @@ export type ListClientsParams = {
   ownerId?: string
 }
 
+/** Body for POST /api/clients (createClientBodySchema). */
+export type CreateClientBody = {
+  fullName: string
+  email: string
+  phone?: string
+  country?: string
+  targetCountry?: string
+}
+
 /** Client object inside GET /api/clients/:clientId (no list-only activeDealTitle). */
 export type ClientDetailClientResponse = Omit<ClientResponse, 'activeDealTitle'>
 

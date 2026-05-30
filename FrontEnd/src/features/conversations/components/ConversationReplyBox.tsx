@@ -7,17 +7,23 @@ import { ApiError } from '@/lib/apiClient'
 
 type ConversationReplyBoxProps = {
   threadId: string
+  /** Disable while assign/claim runs in the same pane. */
+  disabled?: boolean
 }
 
 /** Staff reply composer — POST /api/conversations/:threadId/messages (wireframe bottom bar). */
-export function ConversationReplyBox({ threadId }: ConversationReplyBoxProps) {
+export function ConversationReplyBox({
+  threadId,
+  disabled = false,
+}: ConversationReplyBoxProps) {
   const [message, setMessage] = useState('')
   const { mutate, isPending, isError, error, reset } = useSendConversationMessage({
     threadId,
   })
 
   const trimmedMessage = message.trim()
-  const canSend = trimmedMessage.length > 0 && !isPending
+  const isBusy = disabled || isPending
+  const canSend = trimmedMessage.length > 0 && !isBusy
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -40,7 +46,7 @@ export function ConversationReplyBox({ threadId }: ConversationReplyBoxProps) {
         value={message}
         onChange={(event) => setMessage(event.target.value)}
         placeholder="Reply…"
-        disabled={isPending}
+        disabled={isBusy}
         rows={3}
         aria-label="Reply to conversation"
         className="min-h-[80px] resize-none"

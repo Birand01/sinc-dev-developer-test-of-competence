@@ -2,7 +2,11 @@ import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { AUTHENTICATED_HOME } from '@/features/auth/lib/constants'
+import { useMe } from '@/features/auth/hooks/useMe'
+import {
+  getAuthenticatedHome,
+  STAFF_AUTHENTICATED_HOME,
+} from '@/features/auth/lib/constants'
 
 type PublicOnlyRouteProps = {
   children: ReactNode
@@ -14,11 +18,12 @@ type PublicOnlyRouteProps = {
  *
  * Does NOT check CRM role (client | sales | manager) — Worker enforces that on API calls.
  * 1. isLoading → wait (same as ProtectedRoute — no redirect flash on refresh)
- * 2. isAuthenticated → CRM app entry (dashboard)
+ * 2. isAuthenticated → role-aware CRM home (client → /my-chats, staff → /dashboard)
  * 3. else → render children (HomePage login panel)
  */
 export function PublicOnlyRoute({ children }: PublicOnlyRouteProps) {
   const { isLoading, isAuthenticated } = useAuth()
+  const { data: me, isLoading: isMeLoading } = useMe()
 
   if (isLoading) {
     return (
@@ -33,7 +38,20 @@ export function PublicOnlyRoute({ children }: PublicOnlyRouteProps) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={AUTHENTICATED_HOME} replace />
+    if (isMeLoading) {
+      return (
+        <div
+          className="flex min-h-svh items-center justify-center"
+          role="status"
+          aria-live="polite"
+        >
+          <p className="text-muted-foreground text-sm">Loading…</p>
+        </div>
+      )
+    }
+
+    const home = me ? getAuthenticatedHome(me.role) : STAFF_AUTHENTICATED_HOME
+    return <Navigate to={home} replace />
   }
 
   return children

@@ -1,14 +1,21 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Button } from '@/components/ui/form/button'
 import { Input } from '@/components/ui/form/input'
 import { Label } from '@/components/ui/form/label'
-import { AUTHENTICATED_HOME } from '@/features/auth/lib/constants'
+import { getMe } from '@/features/auth/api/getMe'
+import {
+  getAuthenticatedHome,
+  STAFF_AUTHENTICATED_HOME,
+} from '@/features/auth/lib/constants'
+import { authQueryKeys } from '@/features/auth/lib/queryKeys'
 import { getSupabase } from '@/lib/supabase'
 
 /** Email/password sign-in for the home page auth panel. */
 export function LoginForm() {
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -32,7 +39,18 @@ export function LoginForm() {
       return
     }
 
-    navigate(AUTHENTICATED_HOME, { replace: true })
+    let home: string = STAFF_AUTHENTICATED_HOME
+    try {
+      const me = await queryClient.fetchQuery({
+        queryKey: authQueryKeys.me,
+        queryFn: getMe,
+      })
+      home = getAuthenticatedHome(me.role)
+    } catch {
+      // Profile fetch failed — ProtectedRoute + AppLayout still gate API access.
+    }
+
+    navigate(home, { replace: true })
   }
 
   return (

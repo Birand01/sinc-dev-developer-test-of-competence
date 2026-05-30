@@ -80,7 +80,7 @@ export class ConversationThreadRepository implements IConversationThreadReposito
    * Updates assigned_to on a thread. RLS controls who may update (manager vs sales claim).
    * Update without RETURNING: same RLS read-back issue as create.
    */
-  async assignTo(threadId: string, assignedTo: string): Promise<ConversationThread> {
+  async assignTo(threadId: string, assignedTo: string | null): Promise<ConversationThread> {
     const { error } = await this.supabase
       .from('conversation_threads')
       .update({ assigned_to: assignedTo })

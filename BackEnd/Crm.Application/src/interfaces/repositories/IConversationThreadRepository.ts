@@ -18,8 +18,8 @@ export interface IConversationThreadRepository {
   /** Threads for one client, newest activity first (RLS-scoped). */
   listByClientId(clientId: string): Promise<ConversationThread[]>;
   create(input: CreateConversationThreadInput): Promise<ConversationThread>;
-  /** Sets assigned_to on a thread. RLS enforces manager vs sales claim rules. */
-  assignTo(threadId: string, assignedTo: string): Promise<ConversationThread>;
+  /** Sets assigned_to on a thread (null = unassigned). RLS enforces manager vs sales claim rules. */
+  assignTo(threadId: string, assignedTo: string | null): Promise<ConversationThread>;
   /** Updates status on a thread. RLS enforces manager vs sales-on-owned-thread rules. */
   updateStatus(threadId: string, status: ConversationStatus): Promise<ConversationThread>;
   /** Dashboard aggregate: thread counts per status (RLS-scoped). */

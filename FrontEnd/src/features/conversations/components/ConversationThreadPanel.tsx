@@ -1,10 +1,14 @@
+import { useState } from 'react'
+
 import { Badge } from '@/components/ui/display/badge'
 import {
   Card,
   CardContent,
   CardHeader,
 } from '@/components/ui/display/card'
+import { ConversationClaimButton } from '@/features/conversations/components/ConversationClaimButton'
 import { ConversationMessageList } from '@/features/conversations/components/ConversationMessageList'
+import { ConversationReassignSelect } from '@/features/conversations/components/ConversationReassignSelect'
 import { ConversationReplyBox } from '@/features/conversations/components/ConversationReplyBox'
 import {
   formatConversationAssigneeLabel,
@@ -26,11 +30,17 @@ type ConversationThreadPanelProps = {
   isMessagesLoading: boolean
   isMessagesError: boolean
   messagesError: unknown
+  /** Sales on unassigned thread — show Assign to me (matches canAssignThread). */
+  canClaim: boolean
+  /** Manager — inline reassign Select (matches canAssignThread for managers). */
+  canReassign: boolean
+  /** Signed-in user id for PATCH .../assign when claiming; undefined until me loads. */
+  claimAssigneeId?: string
   /** Optional map from profiles.id → full name (dashboard dealsByOwner). */
   assigneeNameById?: Record<string, string>
 }
 
-/** Staff inbox thread pane — header, transcript, and reply composer. */
+/** Staff inbox thread pane — header, claim, transcript, and reply composer. */
 export function ConversationThreadPanel({
   threadId,
   thread,
@@ -41,8 +51,14 @@ export function ConversationThreadPanel({
   isMessagesLoading,
   isMessagesError,
   messagesError,
+  canClaim,
+  canReassign,
+  claimAssigneeId,
   assigneeNameById,
 }: ConversationThreadPanelProps) {
+  const [isClaimPending, setIsClaimPending] = useState(false)
+  const [isReassignPending, setIsReassignPending] = useState(false)
+
   if (!threadId) {
     return (
       <Card className="flex min-h-[420px] flex-col">
@@ -83,6 +99,12 @@ export function ConversationThreadPanel({
     thread.assignedTo,
     assigneeNameById,
   )
+  const showClaimAction = canClaim && Boolean(claimAssigneeId)
+  const assignMutationBusy = isClaimPending || isReassignPending
+  const assigneeFullName =
+    thread.assignedTo != null
+      ? assigneeNameById?.[thread.assignedTo]
+      : undefined
 
   return (
     <Card className="flex min-h-[420px] flex-col">
@@ -93,9 +115,28 @@ export function ConversationThreadPanel({
             {formatConversationStatusLabel(thread.status)}
           </Badge>
         </div>
-        <p className="text-muted-foreground text-sm">
-          <span className="text-foreground font-medium">Owner:</span> {ownerLabel}
+        <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-foreground font-medium">Owner:</span>
+          {canReassign ? (
+            <ConversationReassignSelect
+              threadId={threadId}
+              assignedTo={thread.assignedTo}
+              assigneeFullName={assigneeFullName}
+              disabled={isClaimPending}
+              onPendingChange={setIsReassignPending}
+            />
+          ) : (
+            <Badge variant="outline">{ownerLabel}</Badge>
+          )}
         </p>
+        {showClaimAction && claimAssigneeId ? (
+          <ConversationClaimButton
+            threadId={threadId}
+            assigneeId={claimAssigneeId}
+            disabled={isReassignPending}
+            onPendingChange={setIsClaimPending}
+          />
+        ) : null}
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 border-t pt-4">
         <ConversationMessageList
@@ -105,7 +146,10 @@ export function ConversationThreadPanel({
           error={messagesError}
         />
         <div className="mt-auto shrink-0 border-t pt-4">
-          <ConversationReplyBox threadId={threadId} />
+          <ConversationReplyBox
+            threadId={threadId}
+            disabled={assignMutationBusy}
+          />
         </div>
       </CardContent>
     </Card>

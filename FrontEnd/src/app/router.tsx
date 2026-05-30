@@ -4,6 +4,7 @@ import { ClientDetailPage } from '@/app/pages/clients/ClientDetailPage'
 import { DealDetailPage } from '@/app/pages/deals/DealDetailPage'
 import { HomePage } from '@/app/pages/home/HomePage'
 import { LoginPage } from '@/app/pages/login/LoginPage'
+import { clientRoutes } from '@/app/clientRoutes'
 import { staffRoutes } from '@/app/staffRoutes'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/features/auth/routes/ProtectedRoute'
@@ -14,7 +15,7 @@ import { PublicOnlyRoute } from '@/features/auth/routes/PublicOnlyRoute'
  * BrowserRouter lives in main.tsx; route definitions stay here as the app grows.
  *
  * Public routes: session gate only (Supabase Auth). Role checks stay on the Worker.
- * Staff paths + pages: staffRoutes.tsx (shared with AppLayout nav).
+ * Staff paths: staffRoutes.tsx — client paths: clientRoutes.tsx (shared with AppLayout nav).
  *
  * Nested routing: parent <Route> renders AppLayout; child routes render inside its <Outlet />.
  * /clients/:clientId and /deals/:dealId are nested (not separate nav items).
@@ -38,7 +39,7 @@ export function AppRouter() {
           </PublicOnlyRoute>
         }
       />
-      {/* Layout parent: no path — wraps all staff URLs. Renders AppLayout shell once. */}
+      {/* Layout parent: no path — wraps authenticated CRM URLs. Renders AppLayout shell once. */}
       <Route
         element={
           <ProtectedRoute>
@@ -68,6 +69,10 @@ export function AppRouter() {
 
           return <Route key={path} path={path} element={<Page />} />
         })}
+
+        {clientRoutes.map(({ path, page: Page }) => (
+          <Route key={path} path={path} element={<Page />} />
+        ))}
       </Route>
     </Routes>
   )
