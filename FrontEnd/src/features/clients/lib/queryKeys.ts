@@ -13,6 +13,8 @@ import type { ListClientsParams } from '@/features/clients/types'
 export const clientsQueryKeys = {
   list: (params: ListClientsParams = {}) =>
     ['clients', 'list', params] as const,
+  /** Prefix — invalidateQueries refreshes every cached list (any search params). */
+  allLists: ['clients', 'list'] as const,
   /** Per-client detail; clientId in the key avoids cross-client cache bleed. */
   detail: (clientId: string) => ['clients', 'detail', clientId] as const,
 }
