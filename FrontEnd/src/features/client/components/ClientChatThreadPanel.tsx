@@ -91,6 +91,7 @@ export function ClientChatThreadPanel({
           isLoading={isMessagesLoading}
           isError={isMessagesError}
           error={messagesError}
+          senderLabelVariant="portal"
         />
         <div className="mt-auto shrink-0 border-t pt-4">
           <ConversationReplyBox threadId={threadId} />

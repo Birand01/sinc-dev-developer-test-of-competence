@@ -1,5 +1,8 @@
 import { ScrollArea } from '@/components/ui/display/scroll-area'
-import { formatMessageSenderLabel } from '@/features/conversations/lib/conversationDisplay'
+import {
+  formatMessageSenderLabel,
+  type MessageSenderLabelVariant,
+} from '@/features/conversations/lib/conversationDisplay'
 import type { ConversationMessageResponse } from '@/features/conversations/types'
 import { ApiError } from '@/lib/apiClient'
 
@@ -8,14 +11,17 @@ type ConversationMessageListProps = {
   isLoading: boolean
   isError: boolean
   error: unknown
+  /** staff (default) → Client/Sales; portal → You/Advisor */
+  senderLabelVariant?: MessageSenderLabelVariant
 }
 
-/** Thread transcript — wireframe lines (Client: / Sales: + body). */
+/** Thread transcript — sender label + message body per line. */
 export function ConversationMessageList({
   items,
   isLoading,
   isError,
   error,
+  senderLabelVariant = 'staff',
 }: ConversationMessageListProps) {
   if (isLoading) {
     return (
@@ -45,7 +51,7 @@ export function ConversationMessageList({
         {items.map((message) => (
           <li key={message.id} className="text-sm leading-relaxed">
             <span className="font-medium">
-              {formatMessageSenderLabel(message.senderType)}:
+              {formatMessageSenderLabel(message.senderType, senderLabelVariant)}:
             </span>{' '}
             <span className="text-foreground whitespace-pre-wrap">
               {message.body}

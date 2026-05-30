@@ -3,10 +3,17 @@ import {
   type MessageSenderType as MessageSenderTypeValue,
 } from '@/features/conversations/types'
 
-/** Wireframe transcript label — client vs team (Sales). */
+/** Who reads the transcript — staff inbox vs client portal wording. */
+export type MessageSenderLabelVariant = 'staff' | 'portal'
+
+/** Transcript sender prefix — staff: Client/Sales; portal: You/Advisor. */
 export function formatMessageSenderLabel(
   senderType: MessageSenderTypeValue,
+  variant: MessageSenderLabelVariant = 'staff',
 ): string {
+  if (variant === 'portal') {
+    return senderType === MessageSenderType.Client ? 'You' : 'Advisor'
+  }
   return senderType === MessageSenderType.Client ? 'Client' : 'Sales'
 }
 

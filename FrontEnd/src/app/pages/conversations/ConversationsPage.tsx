@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useMe } from '@/features/auth/hooks/useMe'
 import { AppRole } from '@/features/auth/types'
@@ -17,8 +18,15 @@ import {
 import type { ConversationThreadResponse } from '@/features/conversations/types'
 import { ApiError } from '@/lib/apiClient'
 
+/** Router state from ClientConversationsCard → /conversations link. */
+type ConversationsLocationState = {
+  threadId?: string
+}
+
 /** Staff inbox — queue, filters, thread detail, messages, reply, claim, and reassign. */
 export function ConversationsPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [assigneeFilter, setAssigneeFilter] =
     useState<ConversationAssigneeFilter>(conversationAssigneeFilterDefault)
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
@@ -38,6 +46,15 @@ export function ConversationsPage() {
     isError: isMessagesError,
     error: messagesError,
   } = useConversationMessages(selectedThreadId)
+
+  useEffect(() => {
+    const threadId = (location.state as ConversationsLocationState | null)
+      ?.threadId
+    if (!threadId) return
+
+    setSelectedThreadId(threadId)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.pathname, location.state, navigate])
 
   const assigneeNameById = useMemo(() => {
     const map: Record<string, string> = {}

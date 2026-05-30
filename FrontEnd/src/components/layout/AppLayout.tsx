@@ -82,6 +82,7 @@ export function AppLayout() {
 
   const isClient = me.role === AppRole.Client
   const showStaffNav = !isClient
+  const appTitle = isClient ? 'Student Portal' : 'SINC Sales CRM'
 
   if (isClient && isStaffPath(location.pathname)) {
     return <Navigate to={CLIENT_AUTHENTICATED_HOME} replace />
@@ -101,7 +102,7 @@ export function AppLayout() {
               aria-hidden
             />
             <span className="truncate text-sm font-semibold tracking-tight">
-              SINC Sales CRM
+              {appTitle}
             </span>
           </div>
 
