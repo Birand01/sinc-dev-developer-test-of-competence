@@ -1,7 +1,7 @@
 /**
  * Types for Deal API JSON (Worker → browser).
  *
- * Source of truth: BackEnd Crm.Api dealResponseMapper + dealsSchemas.ts.
+ * Source of truth: BackEnd Crm.Api dealResponseMapper, dealsSchemas.ts + routes/deals.ts.
  */
 
 import type { DealStage } from '@/features/dashboard/types'
@@ -31,4 +31,15 @@ export type DealResponse = {
   lostReason: string | null
   createdAt: string
   updatedAt: string
+}
+
+/** GET /api/deals (200) — array body; cached under dealsQueryKeys.list(params). */
+export type DealsListResponse = DealResponse[]
+
+/** Query string for GET /api/deals; each distinct params object gets its own React Query cache key. */
+export type ListDealsParams = {
+  stage?: DealStage
+  ownerId?: string
+  clientId?: string
+  q?: string
 }

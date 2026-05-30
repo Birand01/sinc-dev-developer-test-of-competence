@@ -3,6 +3,7 @@ import type { Profile } from '../../../../Crm.Domain/entities/Profile';
 import { AppRole } from '../../../../Crm.Domain/enums/AppRole';
 import { DealStage } from '../../../../Crm.Domain/enums/DealStage';
 import { canCreateDeal } from '../../../../Crm.Domain/rules/DealRules';
+import { isSales } from '../../../../Crm.Domain/rules/helpers';
 import { createDealError } from '../../errors/createDealError';
 import type { IClientRepository } from '../../interfaces/repositories/IClientRepository';
 import type { IProfileRepository } from '../../interfaces/repositories/IProfileRepository';
@@ -44,9 +45,14 @@ export class CreateDealService {
       throw createDealError('CLIENT_NOT_FOUND');
     }
 
-    // If owner is provided, it must exist and be a sales profile.
-    if (input.ownerId) {
-      const owner = await this.profileRepository.getById(input.ownerId);
+    // Sales creating without ownerId → assign to self ("can own deals").
+    // Manager may omit ownerId to leave deal in the unassigned pool.
+    const ownerId =
+      input.ownerId ?? (isSales(actor) ? actor.id : null);
+
+    // If owner is set, it must exist and be a sales profile.
+    if (ownerId) {
+      const owner = await this.profileRepository.getById(ownerId);
       if (!owner) {
         throw createDealError('OWNER_NOT_FOUND');
       }
@@ -57,6 +63,7 @@ export class CreateDealService {
 
     const createInput: CreateDealRepositoryInput = {
       ...input,
+      ownerId,
       stage: DealStage.NewLead,
       lostReason: null,
     };

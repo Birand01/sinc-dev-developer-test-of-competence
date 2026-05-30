@@ -11,6 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/overlay/dialog'
+import { AppRole } from '@/features/auth/types'
+import { useMe } from '@/features/auth/hooks/useMe'
 import { useCreateDeal } from '@/features/deals/hooks/useCreateDeal'
 import { ApiError } from '@/lib/apiClient'
 
@@ -27,6 +29,7 @@ export function ClientNewDealDialog({
   onOpenChange,
 }: ClientNewDealDialogProps) {
   const [title, setTitle] = useState('')
+  const { data: me } = useMe()
   const { mutate, isPending, isError, error, reset } = useCreateDeal()
 
   function handleOpenChange(nextOpen: boolean) {
@@ -43,7 +46,12 @@ export function ClientNewDealDialog({
     if (!trimmedTitle) return
 
     mutate(
-      { clientId, title: trimmedTitle },
+      {
+        clientId,
+        title: trimmedTitle,
+        // Backend also defaults sales → self; explicit for clarity in network tab.
+        ...(me?.role === AppRole.Sales ? { ownerId: me.id } : {}),
+      },
       {
         onSuccess: () => {
           setTitle('')

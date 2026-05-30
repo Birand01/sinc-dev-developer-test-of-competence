@@ -2,10 +2,16 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { clientsQueryKeys } from '@/features/clients/lib/queryKeys'
 import { createDeal } from '@/features/deals/api/createDeal'
+import { dealsQueryKeys } from '@/features/deals/lib/queryKeys'
 import type { CreateDealBody } from '@/features/deals/types'
 
 /**
- * Create a deal (POST /api/deals) and refresh client detail + list caches.
+ * Create a deal (POST /api/deals) and mark related caches stale so UI refetches.
+ *
+ * invalidateQueries does not fetch — it tells React Query old cache entries are outdated.
+ * - client detail: deals card + activity on /clients/:clientId
+ * - client allLists: activeDealTitle on /clients list
+ * - deals allLists: any Pipeline list(params) cache (prefix match)
  */
 export function useCreateDeal() {
   const queryClient = useQueryClient()
@@ -18,6 +24,9 @@ export function useCreateDeal() {
       })
       queryClient.invalidateQueries({
         queryKey: clientsQueryKeys.allLists,
+      })
+      queryClient.invalidateQueries({
+        queryKey: dealsQueryKeys.allLists,
       })
     },
   })
